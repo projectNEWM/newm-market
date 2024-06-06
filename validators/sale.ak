@@ -1,0 +1,209 @@
+use aiken/list
+use aiken/transaction.{Input,
+  OutputReference, ScriptContext, Spend, Transaction}
+use aiken/transaction/credential.{Address}
+use aiken/transaction/value.{AssetName, PolicyId, Value}
+use assist/addresses
+use assist/count
+use assist/data
+use assist/find
+use assist/minting
+use assist/payout
+use assist/prefixes
+use assist/signing
+use assist/types/hashes.{ValidatorHash}
+use assist/types/token
+use assist/values
+use newm_market/types/queue.{QueuePurchase, QueueRedeemer}
+use newm_market/types/reference.{ReferenceDatum}
+use newm_market/types/sale.{
+  Purchase, RemoveSale, SaleDatum, SaleRedeemer, StartSale, TransformSale,
+}
+
+validator(
+  starter_pid: PolicyId,
+  starter_tkn: AssetName,
+  ref_hash: ValidatorHash,
+) {
+  fn params(
+    this_datum: SaleDatum,
+    redeemer: SaleRedeemer,
+    context: ScriptContext,
+  ) -> Bool {
+    expect Spend(output_reference) = context.purpose
+    // the transaction being validated
+    let Transaction {
+      inputs,
+      outputs,
+      reference_inputs,
+      fee,
+      mint,
+      extra_signatories,
+      redeemers,
+      ..
+    } = context.transaction
+    // data reference stuff
+    let ref_addr: Address = credential.from_script(ref_hash)
+    let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
+    expect ref_datum: ReferenceDatum = data.input_datum(ref_input)
+    // the input being validated
+    let this_input: Input = find.input_by_ref(inputs, output_reference)
+    let this_value: Value = this_input.output.value
+    let this_address: Address = this_input.output.address
+    when redeemer is {
+      // Buyer can purchase a bundle from the UTxO
+      Purchase -> {
+        // The queue address
+        let queue_addr: Address =
+          addresses.create_script_address(
+            ref_datum.contracts.queue,
+            ref_datum.contracts.stake,
+          )
+        // find the first queue input input
+        let queue_input: Input = find.input_by_addr(inputs, queue_addr)
+        let queue_out_ref: OutputReference = queue_input.output_reference
+        // the sale_datum going back to the sale contract
+        expect that_datum: SaleDatum =
+          find.output_datum_by_addr(outputs, this_address)
+        // this should fail for bad data serialization
+        expect that_redeemer: QueueRedeemer =
+          find.redeemer_by_ref(redeemers, queue_out_ref)
+        let is_correct_redeemer: Bool =
+          when that_redeemer is {
+            QueuePurchase -> True
+            _ -> fail @"Incorrect Queue Redeemer"
+          }
+        //
+        //
+        //
+        and {
+          // correct redeemer on the queue side
+          is_correct_redeemer?,
+          // single script input
+          count.inputs_by_addr(inputs, queue_addr, 1)?,
+          // single script output
+          count.outputs_by_addr(outputs, queue_addr, 1)?,
+          // input sale_datum and output sale_datum must equal
+          (this_datum == that_datum)?,
+          (ref_datum.pointer != this_datum.bundle.pid)?,
+          (ref_datum.pointer != this_datum.cost.pid)?,
+          // must be the correct reference data
+          values.prove_exact_nft(
+            ref_input.output.value,
+            starter_pid,
+            starter_tkn,
+          )?,
+        }
+      }
+      // mint a pointer token to start off a sale
+      StartSale { pointer } -> {
+        // add the pointer token and remove the fee
+        let that_value: Value =
+          value.add(this_value, ref_datum.pointer, pointer.tkn, 1)
+            |> value.merge(value.negate(fee))
+        let mint_list: List<(PolicyId, AssetName, Int)> =
+          mint |> value.from_minted_value() |> value.flatten()
+        // the sale_datum going back to the contract
+        expect that_datum: SaleDatum =
+          find.output_datum_by_addr(outputs, this_address)
+        //
+        //
+        //
+        and {
+          // must be the correct reference data
+          values.prove_exact_nft(
+            ref_input.output.value,
+            starter_pid,
+            starter_tkn,
+          )?,
+          // The transaction fee can not exceed an upperbound
+          reference.valid_tx_fee(fee, ref_datum.fees.start_sale_bound)?,
+          // prove pointer has pointer token
+          minting.is_occurring(mint_list, ref_datum.pointer, pointer.tkn)?,
+          // prove this value doesn't have pointer token
+          !values.prove_nft(this_value, ref_datum.pointer)?,
+          // what is being sold can't be the pointer token
+          (ref_datum.pointer != this_datum.bundle.pid)?,
+          (ref_datum.pointer != this_datum.cost.pid)?,
+          // value must go back to script
+          payout.exact(this_address, that_value, outputs)?,
+          // the sale_datum can not change
+          (this_datum == that_datum)?,
+          // single script input
+          count.inputs_by_addr(inputs, this_address, 1)?,
+          // single script output
+          count.outputs_by_addr(outputs, this_address, 1)?,
+        }
+      }
+      // Transform the sale by some token
+      TransformSale { transforms } -> {
+        // this value is transformed into that value
+        let that_value: Value =
+          token.add_tokens_to_value(this_value, transforms)
+        // that datum going back to the contract
+        expect that_datum: SaleDatum =
+          find.output_datum_by_addr(outputs, this_address)
+        //
+        //
+        //
+        and {
+          // the owner must sign it
+          signing.verify_sig(extra_signatories, this_datum.owner.pkh)?,
+          // prove transforms does not have pointer token
+          (list.all(transforms, fn(n) { ref_datum.pointer != n.pid }) == True)?,
+          // value must go back to script
+          payout.exact(this_address, that_value, outputs)?,
+          // the this_datum can not change
+          sale.valid_sale_datum_update(this_datum, that_datum)?,
+          // single script input
+          count.inputs_by_addr(inputs, this_address, 1)?,
+          // single script output
+          count.outputs_by_addr(outputs, this_address, 1)?,
+          // must be the correct reference data
+          values.prove_exact_nft(
+            ref_input.output.value,
+            starter_pid,
+            starter_tkn,
+          )?,
+        }
+      }
+      // Owner can remove their UTxO by burning the pointer
+      RemoveSale -> {
+        // check if the pointer token needs to be burned or not
+        let burn_pointer_token: Bool =
+          if values.prove_nft(this_value, ref_datum.pointer) {
+            // the input being validated
+            let mint_list: List<(PolicyId, AssetName, Int)> =
+              mint |> value.from_minted_value() |> value.flatten()
+            // must burn 1 pointer token
+            minting.by_prefix(
+              mint_list,
+              ref_datum.pointer,
+              prefixes.callable,
+              -1,
+            )
+          } else {
+            // if you dont hold the pointer then your sale never started
+            True
+          }
+        //
+        //
+        //
+        and {
+          // must be the correct reference data
+          values.prove_exact_nft(
+            ref_input.output.value,
+            starter_pid,
+            starter_tkn,
+          )?,
+          // if have pointer burn else remove
+          burn_pointer_token?,
+          // the owner must sign it
+          signing.verify_sig(extra_signatories, this_datum.owner.pkh)?,
+          // single script input
+          count.inputs_by_addr(inputs, this_address, 1)?,
+        }
+      }
+    }
+  }
+}
