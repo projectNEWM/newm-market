@@ -11,7 +11,7 @@ cffi==1.16.0
 charset-normalizer==3.3.2
 click==8.1.7
 cose==0.9.dev8
-cryptography==42.0.1
+cryptography==42.0.4
 ecdsa==0.18.0
 ECPy==1.2.5
 Flask==3.0.1
