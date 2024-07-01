@@ -86,8 +86,7 @@ validator(
         // calculate the total cost for the number of bundles
         let total_cost: Token =
           token.multiply(sale_datum.cost, number_of_bundles)
-        // since the cost is a value type, merge it, but sub the bundle
-        // add cost value, remove bundle value
+        // add total cost, remove the number of bundles
         let return_sale_value: Value =
           token.add_token_to_value(sale_value, total_cost)
             |> value.add(
@@ -225,10 +224,9 @@ validator(
             // Refund!
             True
           }
-        // the queue script address
+        // the queue entry owner address
         let owner_addr: Address = addresses.from_wallet(this_datum.owner)
-        // subtract the fee from the value being spent
-        // the incentive is paid to refund it back
+        // subtract the fee and the incentive
         let that_value: Value =
           value.merge(this_value, value.negate(fee))
             |> value.add(
