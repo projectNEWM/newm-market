@@ -1,4 +1,5 @@
 use aiken/dict
+use aiken/list
 use aiken/transaction.{Input, ScriptContext, Spend, Transaction}
 use aiken/transaction/credential.{Address}
 use aiken/transaction/value.{AssetName, PolicyId, Value}
@@ -109,10 +110,16 @@ validator(
       MintBand -> {
         let this_addr: Address = this_input.output.address
         // get the list of token names from the monster pid
-        let token_names: List<AssetName> =
+        let token_names1: List<AssetName> =
           this_value
-            |> value.tokens(ref_datum.batcher_data.monster_pid)
+            |> value.tokens(ref_datum.batcher_data.monster_pid1)
             |> dict.keys()
+        let token_names2: List<AssetName> =
+          this_value
+            |> value.tokens(ref_datum.batcher_data.monster_pid2)
+            |> dict.keys()
+        let token_names: List<AssetName> =
+          list.concat(token_names1, token_names2)
         expect that_datum: BandLockUpDatum =
           find.output_datum_by_addr(outputs, this_addr)
         // check if something is being minted here

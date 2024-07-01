@@ -84,7 +84,8 @@ pub fn valid_tx_fee(fee: Value, upper_bound: Lovelace) -> Bool {
 /// policy id may change but the name is always constant.
 ///
 pub type BatcherData {
-  monster_pid: PolicyId,
+  monster_pid1: PolicyId,
+  monster_pid2: PolicyId,
   monster_prefixes: List<ByteArray>,
   batcher_pid: PolicyId,
 }
