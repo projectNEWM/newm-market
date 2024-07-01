@@ -175,13 +175,21 @@ validator(
             // the input being validated
             let mint_list: List<(PolicyId, AssetName, Int)> =
               mint |> value.from_minted_value() |> value.flatten()
-            // must burn 1 pointer token
-            minting.by_prefix(
-              mint_list,
-              ref_datum.pointer,
-              prefixes.callable,
-              -1,
-            )
+            // must burn 1 pointer token and prove the ref token
+            and {
+              minting.by_prefix(
+                mint_list,
+                ref_datum.pointer,
+                prefixes.callable,
+                -1,
+              )?,
+              // must be the correct reference data
+              values.prove_exact_nft(
+                ref_input.output.value,
+                starter_pid,
+                starter_tkn,
+              )?,
+            }
           } else {
             // if you dont hold the pointer then your sale never started
             True
@@ -190,12 +198,6 @@ validator(
         //
         //
         and {
-          // must be the correct reference data
-          values.prove_exact_nft(
-            ref_input.output.value,
-            starter_pid,
-            starter_tkn,
-          )?,
           // if have pointer burn else remove
           burn_pointer_token?,
           // the owner must sign it

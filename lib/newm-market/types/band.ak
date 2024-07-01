@@ -58,6 +58,6 @@ fn do_has_correct_tokens(
 fn prefix_in_token_name(prefix: ByteArray, token_name: AssetName) -> Bool {
   // the length of the prefix counting from 0
   let length_of_prefix = bytearray.length(prefix) - 1
-  // excluding the number does at least the prefix match
+  // does teh prefix exist in the token name
   bytearray.slice(token_name, start: 0, end: length_of_prefix) == prefix
 }

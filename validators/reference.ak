@@ -9,7 +9,6 @@ use assist/signing
 use assist/types/wallet
 use newm_market/types/reference.{ReferenceDatum}
 
-// use a random string here to create many reference contracts if required
 validator {
   fn params(
     this_datum: ReferenceDatum,
