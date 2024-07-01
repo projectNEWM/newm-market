@@ -13,7 +13,6 @@ use newm_market/constants.{Lovelace}
 use newm_market/types/reference.{ReferenceDatum}
 use newm_market/types/staking.{Delegate, Withdraw, WithdrawRedeemer}
 
-// random_string is for initilizing different stake keys attached to the same starter token
 validator(
   starter_pid: PolicyId,
   starter_tkn: AssetName,
@@ -34,7 +33,7 @@ validator(
     expect ref_datum: ReferenceDatum = data.input_datum(ref_input)
     // the purpose can be withdrawing and publishing
     when context.purpose is {
-      // handle all withdrawals
+      // handle withdrawing a stake reward
       WithdrawFrom(stake_credential) -> {
         let reward_addr: Address =
           addresses.from_wallet(ref_datum.staking.reward_wallet)
@@ -53,14 +52,14 @@ validator(
               // an at least here allows for small rewards to be withdrawn
               payout.at_least(reward_addr, value.from_lovelace(reward), outputs)?,
             }
-          // other redeemers fail here
+          // any other redeemers fails
           _ -> False
         }
       }
-      // handle all delegation certs
+      // handle publishing the delegation cert
       Publish(certificate) ->
         when redeemer is {
-          // only delegate to secific pool
+          // only delegate to specific pool
           Delegate(sd) -> {
             let new_delegation: Certificate =
               CredentialDelegation {
@@ -84,10 +83,10 @@ validator(
               )?,
             }
           }
-          // deregistration fails and anything else but changing delegation
+          // any other redeemer fails
           _ -> False
         }
-      // anything else fails
+      // any other purpose fails
       _ -> False
     }
   }

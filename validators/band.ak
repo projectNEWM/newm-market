@@ -168,12 +168,6 @@ validator(
       }
       // burn nft and unlock full band back to owner
       BurnBand -> {
-        // data reference stuff
-        let ref_addr: Address = credential.from_script(ref_hash)
-        // find the first reference input
-        let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
-        // the reference this_datum
-        expect ref_datum: ReferenceDatum = data.input_datum(ref_input)
         // check if something is being minted here
         let mint_list: List<(PolicyId, AssetName, Int)> =
           mint
