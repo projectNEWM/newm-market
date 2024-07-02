@@ -82,20 +82,13 @@
       "constructor": 0,
       "fields": [
         {
-          "bytes": "7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3"
+          "bytes": "916c03c8f98c44a176de6660e6e45ac0cd59aa4fe6c332bed1e8d79d"
         },
         {
-          "list": [
-            {
-              "bytes": "44455634"
-            },
-            {
-              "bytes": "44455635"
-            },
-            {
-              "bytes": "44455636"
-            }
-          ]
+          "bytes": "e4d33c4f86ac40278cdd80572abfa7e91b01fbba68d8fa258bf7ef46"
+        },
+        {
+          "list": []
         },
         {
           "bytes": "fccdb1021c3e19a7488323f263cbe25a56d4e058c52f6a0031c9ac4a"
