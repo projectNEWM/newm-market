@@ -156,7 +156,7 @@ jq \
 .fields[4].fields[1].int=$rqb |
 .fields[4].fields[2].int=$ssb |
 .fields[5].bytes=$pointerHash |
-.fields[6].fields[2].bytes=$batcherHash
+.fields[6].fields[3].bytes=$batcherHash
 ' \
 ./scripts/data/reference/reference-datum.json | sponge ./scripts/data/reference/reference-datum.json
 

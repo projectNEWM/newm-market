@@ -36,19 +36,7 @@ TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(
 script_tx_in=${TXIN::-8}
 echo Script UTxO: $script_tx_in
 
-lovelace=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .value.value.lovelace' ../tmp/script_utxo.json)
-
-# this needs to be dynamic
-assets="1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455634373938 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455635383436 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455636313435"
-
-min_utxo=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
-    --protocol-params-file ../tmp/protocol.json \
-    --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
-    --tx-out="${script_address} + 5000000 + ${assets}" | tr -dc '0-9')
-
 # this assumes no entry tokens
-batcher_address_out="${batcher_address} + ${lovelace} + ${assets}"
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
 batcher_token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
 complete_token_name="c011ec7ed000a55e75"
@@ -56,8 +44,6 @@ complete_token_name="c011ec7ed000a55e75"
 token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
 batcher_token="-1 ${batcher_policy_id}.${batcher_token_name} + -1 ${batcher_policy_id}.${complete_token_name}"
-
-echo Output: $batcher_address_out
 #
 # exit
 #
@@ -105,7 +91,6 @@ FEE=$(${cli} transaction build \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-redeemer-file ../data/band_lock/burn-band-redeemer.json \
-    --tx-out="${batcher_address_out}" \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
     --mint="${batcher_token}" \

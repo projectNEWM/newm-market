@@ -20,21 +20,6 @@ batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
-
-# this neeeds to automated in some way
-assets="1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455631313736 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455632303132 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455633313639"
-min_utxo=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
-    --protocol-params-file ../tmp/protocol.json \
-    --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
-    --tx-out="${script_address} + 5000000" | tr -dc '0-9')
-    # --tx-out="${script_address} + 5000000 + ${assets}" | tr -dc '0-9')
-
-# this assumes no entry tokens
-batcher_address_out="${batcher_address} + ${min_utxo}"
-# this has tokens
-# batcher_address_out="${batcher_address} + ${min_utxo} + ${assets}"
-
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${script_address} \
@@ -49,6 +34,38 @@ fi
 TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .key | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
 script_tx_in=${TXIN::-8}
 echo Script UTxO: $script_tx_in
+
+add_to_data=$(python3 -c "
+import sys, json; sys.path.append('../py/'); from token_string import get_token_data, build_token_list;
+file_path = '../tmp/script_utxo.json'
+data = get_token_data(file_path)
+list_of_token_struc = build_token_list(file_path)
+print(json.dumps(list_of_token_struc))
+")
+
+# Check if the extracted field is an empty array '[]'
+if [[ "$add_to_data" == "[]" ]]; then
+    min_utxo=$(${cli} transaction calculate-min-required-utxo \
+    --babbage-era \
+    --protocol-params-file ../tmp/protocol.json \
+    --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
+    --tx-out="${script_address} + 5000000" | tr -dc '0-9')
+    batcher_address_out="${batcher_address} + ${min_utxo}"
+else
+    assets=$(python3 -c "
+    import sys, json; sys.path.append('../py/'); from token_string import create_token_string;
+    assets = create_token_string(${add_to_data})
+    print(assets)
+    ")
+    min_utxo=$(${cli} transaction calculate-min-required-utxo \
+        --babbage-era \
+        --protocol-params-file ../tmp/protocol.json \
+        --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
+        --tx-out="${script_address} + 5000000 + ${assets}" | tr -dc '0-9')
+    batcher_address_out="${batcher_address} + ${min_utxo} + ${assets}"
+fi
+
+echo Output: $batcher_address_out
 #
 # exit
 #
