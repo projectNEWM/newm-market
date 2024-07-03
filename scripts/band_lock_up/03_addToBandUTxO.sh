@@ -36,13 +36,35 @@ TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(
 script_tx_in=${TXIN::-8}
 echo Script UTxO: $script_tx_in
 
-lovelace=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].fields[0].bytes == $pkh) | .value.value.lovelace' ../tmp/script_utxo.json)
+echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
+${cli} query utxo \
+    --testnet-magic ${testnet_magic} \
+    --address ${batcher_address} \
+    --out-file ../tmp/batcher_utxo.json
+TXNS=$(jq length ../tmp/batcher_utxo.json)
+if [ "${TXNS}" -eq "0" ]; then
+   echo -e "\n \033[0;31m NO UTxOs Found At ${batcher_address} \033[0m \n";
+   exit;
+fi
+alltxin=""
+TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/batcher_utxo.json)
+batcher_tx_in=${TXIN::-8}
 
-assets="1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455634373938 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455635383436 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455636313435"
+add_to_data=$(python3 -c "
+import sys, json; sys.path.append('../py/'); from token_string import get_token_data, build_token_list;
+file_path = '../tmp/batcher_utxo.json'
+data = get_token_data(file_path)
+list_of_token_struc = build_token_list(file_path)
+print(json.dumps(list_of_token_struc))
+")
 
-# TODO: need to dynamiccaly update the redeemer here based off the asset string
-# else just update the data/band_lock/add-to-band-redeemer.json with the
-# correct token names
+assets=$(python3 -c "
+import sys, json; sys.path.append('../py/'); from token_string import create_token_string;
+assets = create_token_string(${add_to_data})
+print(assets)
+")
+
+variable=${add_to_data}; jq -r --argjson variable "$variable" '.fields[0].list=$variable' ../data/band_lock/add-to-band-redeemer.json | sponge ../data/band_lock/add-to-band-redeemer.json 
 
 min_utxo=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
@@ -57,19 +79,6 @@ echo Output: $script_address_out
 #
 # exit
 #
-echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
-${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
-    --address ${batcher_address} \
-    --out-file ../tmp/batcher_utxo.json
-TXNS=$(jq length ../tmp/batcher_utxo.json)
-if [ "${TXNS}" -eq "0" ]; then
-   echo -e "\n \033[0;31m NO UTxOs Found At ${batcher_address} \033[0m \n";
-   exit;
-fi
-alltxin=""
-TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/batcher_utxo.json)
-batcher_tx_in=${TXIN::-8}
 
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
 ${cli} query utxo \

@@ -35,16 +35,24 @@ TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(
 script_tx_in=${TXIN::-8}
 echo Script UTxO: $script_tx_in
 
-lovelace=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .value.value.lovelace' ../tmp/script_utxo.json)
+add_to_data=$(python3 -c "
+import sys, json; sys.path.append('../py/'); from token_string import get_token_data, build_token_list;
+file_path = '../tmp/script_utxo.json'
+data = get_token_data(file_path)
+list_of_token_struc = build_token_list(file_path)
+print(json.dumps(list_of_token_struc))
+")
+assets=$(python3 -c "
+import sys, json; sys.path.append('../py/'); from token_string import create_token_string;
+assets = create_token_string(${add_to_data})
+print(assets)
+")
 
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
 batcher_token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
 complete_token_name="c011ec7ed000a55e75"
 
 complete_token="1 ${batcher_policy_id}.${complete_token_name}"
-
-# this needs to be dynamic
-assets="1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455634373938 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455635383436 + 1 7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3.44455636313435"
 
 min_utxo=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
