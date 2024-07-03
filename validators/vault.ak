@@ -1,3 +1,4 @@
+use aiken/list
 use aiken/transaction.{Input, ScriptContext, Spend, Transaction}
 use aiken/transaction/credential.{Address}
 use aiken/transaction/value.{AssetName, PolicyId, Value}
@@ -10,8 +11,11 @@ use assist/types/hashes.{ValidatorHash}
 use assist/types/token
 use assist/types/wallet.{Wallet}
 use assist/values
+use newm_market/constants
 use newm_market/types/reference.{ReferenceDatum}
-use newm_market/types/vault.{AddToVault, SubFromVault, VaultRedeemer}
+use newm_market/types/vault.{
+  AddToVault, RemoveVault, SubFromVault, VaultRedeemer,
+}
 
 validator(
   starter_pid: PolicyId,
@@ -45,6 +49,8 @@ validator(
         //
         //
         and {
+          // hot key must sign
+          signing.verify_sig(extra_signatories, this_datum.pkh)?,
           // datum can't change
           this_datum == that_datum,
           // can only add a token
@@ -71,8 +77,10 @@ validator(
         //
         //
         and {
+          // the batcher deposit can not be removed
+          (value.lovelace_of(that_value) >= constants.vault_minimum_lovelace)?,
           // datum can't change
-          this_datum == that_datum,
+          (this_datum == that_datum)?,
           // can only subtract a token
           token.subtraction_only(outgoing)?,
           // the reference input value must be holding the pointer token
@@ -91,6 +99,17 @@ validator(
           count.outputs_by_addr(outputs, this_addr, 1)?,
         }
       }
+      // remove the vault if and only if the minimum required lovelace exists
+      RemoveVault -> and {
+          // there can only be a single policy ADA
+          (( value.policies(this_value) |> list.length ) == 1)?,
+          // the amount of lovelace must be the minimum
+          (value.lovelace_of(this_value) == constants.vault_minimum_lovelace)?,
+          // hot key must sign
+          signing.verify_sig(extra_signatories, this_datum.pkh)?,
+          // single script input
+          count.inputs_by_addr(inputs, this_addr, 1)?,
+        }
     }
   }
 }

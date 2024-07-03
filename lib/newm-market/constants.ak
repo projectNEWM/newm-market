@@ -7,3 +7,5 @@ pub const complete_set_token_name = #"c011ec7ed000a55e75"
 // Lovelace is just a wrapper around int
 pub type Lovelace =
   Int
+
+pub const vault_minimum_lovelace: Lovelace = 10_000_000
