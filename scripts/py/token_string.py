@@ -1,6 +1,18 @@
 import json
 
 
+def byte_struc(string: str) -> dict:
+    return {
+        "bytes": string
+    }
+
+
+def list_struc(list_of_token_struc: list[any]) -> dict:
+    return {
+        "list": list_of_token_struc
+    }
+
+
 def token_struc(pid: str, tkn: str, amt: int) -> dict:
     return {
         "constructor": 0,
@@ -18,14 +30,10 @@ def token_struc(pid: str, tkn: str, amt: int) -> dict:
     }
 
 
-def list_struc(list_of_token_struc: list) -> dict:
+def tokens_struc(list_of_token_struc: list) -> dict:
     return {
         "constructor": 0,
-        "fields": [
-            {
-                "list": list_of_token_struc
-            }
-        ]
+        "fields": [list_struc(list_of_token_struc)]
     }
 
 
@@ -46,19 +54,29 @@ def create_token_string(list_of_token_struc: list) -> str:
     return string
 
 
-if __name__ == "__main__":
-    file_path = "../tmp/script_utxo.json"
+def build_token_list(file_path):
     data = get_token_data(file_path)
     list_of_token_struc = []
     for utxo in data:
         value = data[utxo]['value']
-
         for pid in value:
             if pid != 'lovelace':
                 for tkn in value[pid]:
                     amt = value[pid][tkn]
                     token = token_struc(pid, tkn, amt)
                     list_of_token_struc.append(token)
+    return list_of_token_struc
 
-    # print(f"Adding {len(list_of_token_struc)} tokens")
-    print(create_token_string(list_of_token_struc))
+
+if __name__ == "__main__":
+    file_path = "../tmp/addr_test1vrs4fk7ea6rg2fvd00sa8um5unp0rt474kngwpc38v2z9vqujprdk.json"
+    data = get_token_data(file_path)
+    list_of_token_struc = build_token_list(file_path)
+    assets = create_token_string(list_of_token_struc)
+    print(assets)
+
+    prefixes = []
+    for t in list_of_token_struc:
+        tkn = f"{t['fields'][1]['bytes']}"
+        prefixes.append(byte_struc(tkn[0:8]))
+    print(prefixes)
