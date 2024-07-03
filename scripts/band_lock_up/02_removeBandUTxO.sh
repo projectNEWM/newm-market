@@ -53,9 +53,9 @@ if [[ "$add_to_data" == "[]" ]]; then
     batcher_address_out="${batcher_address} + ${min_utxo}"
 else
     assets=$(python3 -c "
-    import sys, json; sys.path.append('../py/'); from token_string import create_token_string;
-    assets = create_token_string(${add_to_data})
-    print(assets)
+import sys, json; sys.path.append('../py/'); from token_string import create_token_string;
+assets = create_token_string(${add_to_data});
+print(assets);
     ")
     min_utxo=$(${cli} transaction calculate-min-required-utxo \
         --babbage-era \

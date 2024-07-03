@@ -1,4 +1,5 @@
 use aiken/bytearray
+use aiken/cbor
 use aiken/dict
 use aiken/list
 use aiken/transaction/value.{AssetName, Value}
@@ -33,6 +34,7 @@ pub fn has_correct_tokens(
         has_correct_tokens(tkns_from_value, prefixes)
       } else {
         // missing something from the set
+        trace cbor.diagnostic(prefix)
         False
       }
   }
@@ -44,7 +46,10 @@ fn do_has_correct_tokens(
 ) -> Bool {
   when tkns_from_value is {
     // something wasn't found
-    [] -> False
+    [] -> {
+      trace cbor.diagnostic(tkns_from_value)
+      False
+    }
     [tkn, ..tkns] ->
       if prefix_in_token_name(prefix, tkn) {
         // found it

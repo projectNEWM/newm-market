@@ -69,7 +69,7 @@ def build_token_list(file_path):
 
 
 if __name__ == "__main__":
-    file_path = "../tmp/addr_test1vrs4fk7ea6rg2fvd00sa8um5unp0rt474kngwpc38v2z9vqujprdk.json"
+    file_path = "../tmp/current_band_lock_utxo.json"
     data = get_token_data(file_path)
     list_of_token_struc = build_token_list(file_path)
     assets = create_token_string(list_of_token_struc)
@@ -80,3 +80,4 @@ if __name__ == "__main__":
         tkn = f"{t['fields'][1]['bytes']}"
         prefixes.append(byte_struc(tkn[0:8]))
     print(prefixes)
+    print(len(prefixes))
