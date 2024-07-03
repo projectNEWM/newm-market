@@ -1,0 +1,109 @@
+{
+  "constructor": 0,
+  "fields": [
+    {
+      "bytes": "f4a78bbff6d5e7e492915986abc495382247af659018451a25cec92c"
+    },
+    {
+      "constructor": 0,
+      "fields": [
+        {
+          "list": [
+            {
+              "bytes": "d858ecf3e73e18bef8383a16e856778e033cfd1c8867c70dc9b68b42"
+            },
+            {
+              "bytes": "10a20db9464d89dab407b3397e67facf83db8d442e601b627c0a351f"
+            },
+            {
+              "bytes": "121ce13907d40c7a598d182ed751d39279cf30d50decb17151b3a587"
+            }
+          ]
+        },
+        {
+          "int": 2
+        }
+      ]
+    },
+    {
+      "constructor": 0,
+      "fields": [
+        {
+          "bytes": "1e3105f23f2ac91b3fb4c35fa4fe301421028e356e114944e902005b"
+        },
+        {
+          "constructor": 0,
+          "fields": [
+            {
+              "bytes": "8f7b0ce283a92df9a3b69ac0b8f10d8bc8bcf8fbd1fe72596ee8bd6c"
+            },
+            {
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "constructor": 0,
+      "fields": [
+        {
+          "bytes": "9cba68aaa2e3e7c195d4d36f06a70f57fef811baea563cd527611f25"
+        },
+        {
+          "bytes": "1cb166ec7fc6531a68b652359e9f69b2e26aa5718cbc033110ba3b4b"
+        },
+        {
+          "bytes": "5245943267ead21427fcdabab75f07c2df0413d4da9225a0eb6bc163"
+        },
+        {
+          "bytes": "50f09202a72be78b0151099b12bbdadbfd217a2660abf05428804b67"
+        },
+        {
+          "bytes": "bcd4730edcfd8e4b232fa79badd3afa096d34e443161299ded8550eb"
+        }
+      ]
+    },
+    {
+      "constructor": 0,
+      "fields": [
+        {
+          "int": 1000000
+        },
+        {
+          "int": 1000000
+        },
+        {
+          "int": 1000000
+        }
+      ]
+    },
+    {
+      "bytes": "7af8e27b011c9593810246dafaa446b509493fffc4c21de506edb777"
+    },
+    {
+      "constructor": 0,
+      "fields": [
+        {
+          "bytes": "7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3"
+        },
+        {
+          "list": [
+            {
+              "bytes": "44455634"
+            },
+            {
+              "bytes": "44455635"
+            },
+            {
+              "bytes": "44455636"
+            }
+          ]
+        },
+        {
+          "bytes": "01900c46d186fc4f0300f6ad94540d186e65b4b53a8747c00dc5747d"
+        }
+      ]
+    }
+  ]
+}

@@ -21,6 +21,11 @@ queue_script_address=$(${cli} address build --payment-script-file ${queue_script
 band_lock_script_path="../contracts/band_lock_contract.plutus"
 band_lock_script_address=$(${cli} address build --payment-script-file ${band_lock_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
 
+# vault contract
+vault_script_path="../contracts/vault_contract.plutus"
+vault_script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+
+
 # reference contract address
 ref_script_path="../contracts/reference_contract.plutus"
 ref_script_address=$(${cli} address build --payment-script-file ${ref_script_path} --testnet-magic ${testnet_magic})
@@ -54,6 +59,12 @@ ${cli} query utxo --address ${queue_script_address} --testnet-magic ${testnet_ma
 echo -e "\033[1;35m\nBand Lock Up Script Address: \033[0m" 
 echo -e "\n \033[1;32m ${band_lock_script_address} \033[0m \n";
 ${cli} query utxo --address ${band_lock_script_address} --testnet-magic ${testnet_magic}
+${cli} query utxo --address ${band_lock_script_address} --testnet-magic ${testnet_magic} --out-file ./tmp/current_band_lock_utxo.json
+
+echo -e "\033[1;35m\nVault Script Address: \033[0m"
+echo -e "\n \033[1;32m ${vault_script_address} \033[0m \n";
+${cli} query utxo --address ${vault_script_address} --testnet-magic ${testnet_magic}
+${cli} query utxo --address ${vault_script_address} --testnet-magic ${testnet_magic} --out-file ./tmp/current_vault_utxo.json
 
 # Loop through each -wallet folder
 for wallet_folder in wallets/*-wallet; do

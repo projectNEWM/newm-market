@@ -17,14 +17,8 @@ batcher_path="batcher-wallet"
 batcher_address=$(cat ../wallets/${batcher_path}/payment.addr)
 batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${batcher_path}/payment.vkey)
 
-min_utxo=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
-    --protocol-params-file ../tmp/protocol.json \
-    --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
-    --tx-out="${script_address} + 5000000" | tr -dc '0-9')
-
 # this assumes no entry tokens
-script_address_out="${script_address} + ${min_utxo}"
+script_address_out="${script_address} + 10000000"
 
 echo "Script OUTPUT: "${script_address_out}
 #

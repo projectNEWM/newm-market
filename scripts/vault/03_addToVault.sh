@@ -39,11 +39,11 @@ echo Script UTxO: $script_tx_in
 lovelace=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .value.value.lovelace' ../tmp/script_utxo.json)
 
 min_utxo=$((${lovelace} + 12345678))
-script_address_out="${script_address} + ${min_utxo} + ${assets}"
+script_address_out="${script_address} + ${min_utxo}"
 
 echo Output: $script_address_out
 #
-exit
+# exit
 #
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
 ${cli} query utxo \

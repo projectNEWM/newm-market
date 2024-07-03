@@ -40,7 +40,7 @@ lovelace=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | sel
 
 min_utxo=$((${lovelace} - 12345678))
 
-script_address_out="${script_address} + ${min_utxo} + ${assets}"
+script_address_out="${script_address} + ${min_utxo}"
 echo Output: $script_address_out
 #
 # exit

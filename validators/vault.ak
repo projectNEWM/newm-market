@@ -37,11 +37,12 @@ validator(
     let this_value: Value = this_input.output.value
     // this address being spent from
     let this_addr: Address = this_input.output.address
-    // the datum going back to the vault
-    expect that_datum: Wallet = find.output_datum_by_addr(outputs, this_addr)
     when redeemer is {
       // anyone can add funds to the vault
       AddToVault { incoming } -> {
+        // the datum going back to the vault
+        expect that_datum: Wallet =
+          find.output_datum_by_addr(outputs, this_addr)
         // add the incoming token data to this value
         let that_value: Value =
           this_value |> token.add_tokens_to_value(incoming)
@@ -65,6 +66,9 @@ validator(
       }
       // only those with enough action tokens may subtract from the vault
       SubFromVault { outgoing } -> {
+        // the datum going back to the vault
+        expect that_datum: Wallet =
+          find.output_datum_by_addr(outputs, this_addr)
         // subtract the outgoing token data from this value
         let that_value: Value =
           this_value |> token.add_tokens_to_value(outgoing)
