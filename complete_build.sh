@@ -29,14 +29,6 @@ echo -e "\033[1;34m Building Contracts \033[0m"
 # keep the traces
 aiken build --trace-level verbose --filter-traces all
 
-echo -e "\033[1;33m Convert Reference Contract \033[0m"
-aiken blueprint convert -v reference.params > contracts/reference_contract.plutus
-cardano-cli transaction policyid --script-file contracts/reference_contract.plutus > hashes/reference_contract.hash
-
-# reference hash
-ref=$(cat hashes/reference_contract.hash)
-ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
-
 # the reference token
 pid=$(jq -r '.starterPid' config.json)
 tkn=$(jq -r '.starterTkn' config.json)
@@ -45,6 +37,16 @@ tkn_cbor=$(python3 -c "import cbor2;hex_string='${tkn}';data = bytes.fromhex(hex
 
 # The pool to stake at
 poolId=$(jq -r '.poolId' config.json)
+
+echo -e "\033[1;33m Convert Reference Contract \033[0m"
+aiken blueprint apply -o plutus.json -v reference.params "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v reference.params "${tkn_cbor}"
+aiken blueprint convert -v reference.params > contracts/reference_contract.plutus
+cardano-cli transaction policyid --script-file contracts/reference_contract.plutus > hashes/reference_contract.hash
+
+# reference hash
+ref=$(cat hashes/reference_contract.hash)
+ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
 
 echo -e "\033[1;33m Convert Stake Contract \033[0m"
 aiken blueprint apply -o plutus.json -v staking.params "${pid_cbor}"
@@ -83,6 +85,13 @@ aiken blueprint apply -o plutus.json -v band.params "${ref_cbor}"
 aiken blueprint convert -v band.params > contracts/band_lock_contract.plutus
 cardano-cli transaction policyid --script-file contracts/band_lock_contract.plutus > hashes/band_lock.hash
 
+echo -e "\033[1;33m Convert Vault Contract \033[0m"
+aiken blueprint apply -o plutus.json -v vault.params "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v vault.params "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v vault.params "${ref_cbor}"
+aiken blueprint convert -v vault.params > contracts/vault_contract.plutus
+cardano-cli transaction policyid --script-file contracts/vault_contract.plutus > hashes/vault.hash
+
 echo -e "\033[1;33m Convert Batcher Token Contract \033[0m"
 aiken blueprint apply -o plutus.json -v batcher.params "${ref_cbor}"
 aiken blueprint convert -v batcher.params > contracts/batcher_contract.plutus
@@ -105,6 +114,7 @@ rewardSc=""
 saleHash=$(cat hashes/sale.hash)
 queueHash=$(cat hashes/queue.hash)
 bandHash=$(cat hashes/band_lock.hash)
+vaultHash=$(cat hashes/vault.hash)
 stakeHash=$(cat hashes/stake.hash)
 
 # pointer hash
@@ -136,6 +146,7 @@ jq \
 --arg bandHash "$bandHash" \
 --arg saleHash "$saleHash" \
 --arg queueHash "$queueHash" \
+--arg vaultHash "$vaultHash" \
 --arg stakeHash "$stakeHash" \
 --argjson pqb "$pqb" \
 --argjson rqb "$rqb" \
@@ -151,7 +162,8 @@ jq \
 .fields[3].fields[0].bytes=$saleHash |
 .fields[3].fields[1].bytes=$queueHash |
 .fields[3].fields[2].bytes=$bandHash |
-.fields[3].fields[3].bytes=$stakeHash |
+.fields[3].fields[3].bytes=$vaultHash |
+.fields[3].fields[4].bytes=$stakeHash |
 .fields[4].fields[0].int=$pqb |
 .fields[4].fields[1].int=$rqb |
 .fields[4].fields[2].int=$ssb |

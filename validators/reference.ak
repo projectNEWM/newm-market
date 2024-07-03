@@ -1,15 +1,16 @@
 use aiken/bytearray
 use aiken/transaction.{Input, ScriptContext, Spend, Transaction}
 use aiken/transaction/credential.{Address}
-use aiken/transaction/value.{Value}
+use aiken/transaction/value.{AssetName, PolicyId, Value}
 use assist/count
 use assist/find
 use assist/payout
 use assist/signing
 use assist/types/wallet
+use assist/values
 use newm_market/types/reference.{ReferenceDatum}
 
-validator {
+validator(starter_pid: PolicyId, starter_tkn: AssetName) {
   fn params(
     this_datum: ReferenceDatum,
     _redeemer: Void,
@@ -33,6 +34,8 @@ validator {
     and {
       // send back to script but allow lovelace increase or decrease
       payout.at_least(this_addr, that_value, outputs)?,
+      // must hold starter token
+      values.prove_exact_nft(that_value, starter_pid, starter_tkn)?,
       // single script input
       count.inputs_by_addr(inputs, this_addr, 1)?,
       // single script output

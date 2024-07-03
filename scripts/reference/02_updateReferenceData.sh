@@ -22,7 +22,6 @@ keeper1_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets
 keeper2_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
 keeper3_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
 
-
 # asset to trade
 policy_id=$(jq -r '.starterPid' ../../config.json)
 token_name=$(jq -r '.starterTkn' ../../config.json)

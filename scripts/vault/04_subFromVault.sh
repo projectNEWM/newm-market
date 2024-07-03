@@ -8,17 +8,21 @@ testnet_magic=$(cat ../data/testnet.magic)
 # staking contract
 stake_script_path="../../contracts/stake_contract.plutus"
 
-# bundle sale contract
-band_lock_script_path="../../contracts/band_lock_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${band_lock_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+# vault contract
+vault_script_path="../../contracts/vault_contract.plutus"
+script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
 
 # collat, artist, reference
 batcher_address=$(cat ../wallets/batcher-wallet/payment.addr)
 batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
 
+newm_address=$(cat ../wallets/newm-wallet/payment.addr)
+newm_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
+
 #
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+
 
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
 ${cli} query utxo \
@@ -35,37 +39,12 @@ TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(
 script_tx_in=${TXIN::-8}
 echo Script UTxO: $script_tx_in
 
-add_to_data=$(python3 -c "
-import sys, json; sys.path.append('../py/'); from token_string import get_token_data, build_token_list;
-file_path = '../tmp/script_utxo.json'
-data = get_token_data(file_path)
-list_of_token_struc = build_token_list(file_path)
-print(json.dumps(list_of_token_struc))
-")
+lovelace=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .value.value.lovelace' ../tmp/script_utxo.json)
 
-# Check if the extracted field is an empty array '[]'
-if [[ "$add_to_data" == "[]" ]]; then
-    min_utxo=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
-    --protocol-params-file ../tmp/protocol.json \
-    --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
-    --tx-out="${script_address} + 5000000" | tr -dc '0-9')
-    batcher_address_out="${batcher_address} + ${min_utxo}"
-else
-    assets=$(python3 -c "
-import sys, json; sys.path.append('../py/'); from token_string import create_token_string;
-assets = create_token_string(${add_to_data});
-print(assets);
-    ")
-    min_utxo=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
-        --protocol-params-file ../tmp/protocol.json \
-        --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
-        --tx-out="${script_address} + 5000000 + ${assets}" | tr -dc '0-9')
-    batcher_address_out="${batcher_address} + ${min_utxo} + ${assets}"
-fi
+min_utxo=$((${lovelace} - 12345678))
 
-echo Output: $batcher_address_out
+script_address_out="${script_address} + ${min_utxo}"
+echo Output: $script_address_out
 #
 # exit
 #
@@ -95,7 +74,7 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/band-reference-utxo.signed )
+script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/vault-reference-utxo.signed )
 data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 # exit
@@ -111,10 +90,12 @@ FEE=$(${cli} transaction build \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-redeemer-file ../data/band_lock/remove-redeemer.json \
-    --tx-out="${batcher_address_out}" \
+    --spending-reference-tx-in-redeemer-file ../data/vault/sub-to-vault-redeemer.json \
+    --tx-out="${script_address_out}" \
+    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
+    --required-signer-hash ${newm_pkh} \
     --testnet-magic ${testnet_magic})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
@@ -128,6 +109,7 @@ echo -e "\033[0;36m Signing \033[0m"
 ${cli} transaction sign \
     --signing-key-file ../wallets/batcher-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
+    --signing-key-file ../wallets/newm-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
     --testnet-magic ${testnet_magic}

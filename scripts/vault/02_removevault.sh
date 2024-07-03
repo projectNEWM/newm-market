@@ -9,10 +9,10 @@ testnet_magic=$(cat ../data/testnet.magic)
 stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
-band_lock_script_path="../../contracts/band_lock_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${band_lock_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+vault_script_path="../../contracts/vault_contract.plutus"
+script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
 
-# collat, artist, reference
+#
 batcher_address=$(cat ../wallets/batcher-wallet/payment.addr)
 batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
 
@@ -34,38 +34,6 @@ fi
 TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .key | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
 script_tx_in=${TXIN::-8}
 echo Script UTxO: $script_tx_in
-
-add_to_data=$(python3 -c "
-import sys, json; sys.path.append('../py/'); from token_string import get_token_data, build_token_list;
-file_path = '../tmp/script_utxo.json'
-data = get_token_data(file_path)
-list_of_token_struc = build_token_list(file_path)
-print(json.dumps(list_of_token_struc))
-")
-
-# Check if the extracted field is an empty array '[]'
-if [[ "$add_to_data" == "[]" ]]; then
-    min_utxo=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
-    --protocol-params-file ../tmp/protocol.json \
-    --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
-    --tx-out="${script_address} + 5000000" | tr -dc '0-9')
-    batcher_address_out="${batcher_address} + ${min_utxo}"
-else
-    assets=$(python3 -c "
-import sys, json; sys.path.append('../py/'); from token_string import create_token_string;
-assets = create_token_string(${add_to_data});
-print(assets);
-    ")
-    min_utxo=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
-        --protocol-params-file ../tmp/protocol.json \
-        --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
-        --tx-out="${script_address} + 5000000 + ${assets}" | tr -dc '0-9')
-    batcher_address_out="${batcher_address} + ${min_utxo} + ${assets}"
-fi
-
-echo Output: $batcher_address_out
 #
 # exit
 #
@@ -95,7 +63,7 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/band-reference-utxo.signed )
+script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/vault-reference-utxo.signed )
 data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 # exit
@@ -111,8 +79,7 @@ FEE=$(${cli} transaction build \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-redeemer-file ../data/band_lock/remove-redeemer.json \
-    --tx-out="${batcher_address_out}" \
+    --spending-reference-tx-in-redeemer-file ../data/vault/remove-vault-redeemer.json \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
     --testnet-magic ${testnet_magic})
