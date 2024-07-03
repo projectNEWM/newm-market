@@ -112,6 +112,7 @@ rewardSc=""
 saleHash=$(cat hashes/sale.hash)
 queueHash=$(cat hashes/queue.hash)
 bandHash=$(cat hashes/band_lock.hash)
+vaultHash=$(cat hashes/vault.hash)
 stakeHash=$(cat hashes/stake.hash)
 
 # pointer hash
@@ -143,6 +144,7 @@ jq \
 --arg bandHash "$bandHash" \
 --arg saleHash "$saleHash" \
 --arg queueHash "$queueHash" \
+--arg vaultHash "$vaultHash" \
 --arg stakeHash "$stakeHash" \
 --argjson pqb "$pqb" \
 --argjson rqb "$rqb" \
@@ -158,7 +160,8 @@ jq \
 .fields[3].fields[0].bytes=$saleHash |
 .fields[3].fields[1].bytes=$queueHash |
 .fields[3].fields[2].bytes=$bandHash |
-.fields[3].fields[3].bytes=$stakeHash |
+.fields[3].fields[3].bytes=$vaultHash |
+.fields[3].fields[4].bytes=$stakeHash |
 .fields[4].fields[0].int=$pqb |
 .fields[4].fields[1].int=$rqb |
 .fields[4].fields[2].int=$ssb |

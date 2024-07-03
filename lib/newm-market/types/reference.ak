@@ -51,6 +51,7 @@ pub type Contracts {
   sale: ValidatorHash,
   queue: ValidatorHash,
   band: ValidatorHash,
+  vault: ValidatorHash,
   stake: ValidatorHash,
 }
 
@@ -61,6 +62,7 @@ pub fn is_valid_contracts(contracts: Contracts) -> Bool {
     bytearray.length(contracts.sale) == 28,
     bytearray.length(contracts.queue) == 28,
     bytearray.length(contracts.band) == 28,
+    bytearray.length(contracts.vault) == 28,
     or {
       bytearray.is_empty(contracts.stake),
       bytearray.length(contracts.stake) == 28,
