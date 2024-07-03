@@ -29,14 +29,6 @@ echo -e "\033[1;34m Building Contracts \033[0m"
 # keep the traces
 aiken build --trace-level verbose --filter-traces all
 
-echo -e "\033[1;33m Convert Reference Contract \033[0m"
-aiken blueprint convert -v reference.params > contracts/reference_contract.plutus
-cardano-cli transaction policyid --script-file contracts/reference_contract.plutus > hashes/reference_contract.hash
-
-# reference hash
-ref=$(cat hashes/reference_contract.hash)
-ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
-
 # the reference token
 pid=$(jq -r '.starterPid' config.json)
 tkn=$(jq -r '.starterTkn' config.json)
@@ -45,6 +37,16 @@ tkn_cbor=$(python3 -c "import cbor2;hex_string='${tkn}';data = bytes.fromhex(hex
 
 # The pool to stake at
 poolId=$(jq -r '.poolId' config.json)
+
+echo -e "\033[1;33m Convert Reference Contract \033[0m"
+aiken blueprint apply -o plutus.json -v reference.params "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v reference.params "${tkn_cbor}"
+aiken blueprint convert -v reference.params > contracts/reference_contract.plutus
+cardano-cli transaction policyid --script-file contracts/reference_contract.plutus > hashes/reference_contract.hash
+
+# reference hash
+ref=$(cat hashes/reference_contract.hash)
+ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
 
 echo -e "\033[1;33m Convert Stake Contract \033[0m"
 aiken blueprint apply -o plutus.json -v staking.params "${pid_cbor}"
@@ -166,7 +168,7 @@ jq \
 .fields[4].fields[1].int=$rqb |
 .fields[4].fields[2].int=$ssb |
 .fields[5].bytes=$pointerHash |
-.fields[6].fields[2].bytes=$batcherHash
+.fields[6].fields[3].bytes=$batcherHash
 ' \
 ./scripts/data/reference/reference-datum.json | sponge ./scripts/data/reference/reference-datum.json
 

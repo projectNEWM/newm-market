@@ -1,0 +1,9 @@
+{
+  "type": "all",
+  "scripts": [
+    {
+      "slot": 1237,
+      "type": "after"
+    }
+  ]
+}

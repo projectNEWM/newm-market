@@ -16,6 +16,9 @@ script_address=$(${cli} address build --payment-script-file ${vault_script_path}
 batcher_address=$(cat ../wallets/batcher-wallet/payment.addr)
 batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
 
+newm_address=$(cat ../wallets/newm-wallet/payment.addr)
+newm_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
+
 #
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
@@ -87,11 +90,12 @@ FEE=$(${cli} transaction build \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
+    --spending-reference-tx-in-redeemer-file ../data/vault/sub-to-vault-redeemer.json \
     --tx-out="${script_address_out}" \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
+    --required-signer-hash ${newm_pkh} \
     --testnet-magic ${testnet_magic})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
@@ -105,6 +109,7 @@ echo -e "\033[0;36m Signing \033[0m"
 ${cli} transaction sign \
     --signing-key-file ../wallets/batcher-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
+    --signing-key-file ../wallets/newm-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
     --testnet-magic ${testnet_magic}
