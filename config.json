@@ -9,5 +9,9 @@
   "__comment4__": "The tx fee upper bounds for purchases and refunds",
   "purchaseQueueBound": 1000000,
   "refundQueueBound": 1000000,
-  "startSaleBound": 1000000
+  "startSaleBound": 1000000,
+  "__comment5__": "Oracle Feed Information",
+  "oracleValidatorHash": "21f40e565f0c05a7f5e6bab4479376bc667d5dc6b21762a656cc4da7",
+  "oracleFeedPid": "b88cdb6d77bcb6ca9a227bab5d0b6a3b4a47960b41cbab4ede0c8b00",
+  "oracleFeedTkn": "dc2997e4ee6e35cf3d9a0ed7216e6f78b2ec9b3cdb88e6599750bbdf53deda81"
 }

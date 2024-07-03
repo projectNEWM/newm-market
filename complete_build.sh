@@ -97,6 +97,10 @@ aiken blueprint apply -o plutus.json -v batcher.params "${ref_cbor}"
 aiken blueprint convert -v batcher.params > contracts/batcher_contract.plutus
 cardano-cli transaction policyid --script-file contracts/batcher_contract.plutus > hashes/batcher.hash
 
+echo -e "\033[1;33m Convert Testing Purpose Only C3 Oracle Contract \033[0m"
+aiken blueprint convert -v oracle.params > contracts/oracle_contract.plutus
+cardano-cli transaction policyid --script-file contracts/oracle_contract.plutus > hashes/oracle.hash
+
 ###############################################################################
 ############## DATUM AND REDEEMER STUFF #######################################
 ###############################################################################
