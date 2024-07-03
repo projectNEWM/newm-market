@@ -31,10 +31,16 @@ fi
 # Addresses
 sender_path="../wallets/oracle-wallet/"
 sender_address=$(cat ${sender_path}payment.addr)
+sender_pkh=$(cat ${sender_path}payment.hash)
 
 # oracle contract
 oracle_script_path="../../contracts/oracle_contract.plutus"
 script_address=$(${cli} address build --payment-script-file ${oracle_script_path} --testnet-magic ${testnet_magic})
+
+# collat
+collat_address=$(cat ../wallets/collat-wallet/payment.addr)
+collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+
 
 policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
 token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
@@ -67,6 +73,7 @@ fi
 alltxin=""
 TXIN=$(jq -r --arg alltxin "" --arg policy_id "$policy_id" --arg token_name "$token_name" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
 script_tx_in=${TXIN::-8}
+echo Oracle UTxO: $script_tx_in
 
 echo -e "\033[0;36m Gathering UTxO Information  \033[0m"
 ${cli} query utxo \
@@ -102,7 +109,7 @@ FEE=$(${cli} transaction build \
     --babbage-era \
     --out-file ../tmp/tx.draft \
     --change-address ${sender_address} \
-    --tx-in-collateral ${collat_tx_in} \
+    --tx-in-collateral ${collat_utxo} \
     --tx-in ${seller_tx_in} \
     --tx-in ${script_tx_in} \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
@@ -111,6 +118,8 @@ FEE=$(${cli} transaction build \
     --spending-reference-tx-in-redeemer-file ../data/oracle/update-redeemer.json \
     --tx-out="${oracle_address_out}" \
     --tx-out-inline-datum-file ../data/oracle/oracle-datum.json \
+    --required-signer-hash ${sender_pkh} \
+    --required-signer-hash ${collat_pkh} \
     --testnet-magic ${testnet_magic})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
@@ -118,11 +127,12 @@ IFS=' ' read -ra FEE <<< "${VALUE[1]}"
 FEE=${FEE[1]}
 echo -e "\033[1;32m Fee: \033[0m" $FEE
 #
-exit
+# exit
 #
 echo -e "\033[0;36m Signing \033[0m"
 ${cli} transaction sign \
     --signing-key-file ${sender_path}payment.skey \
+    --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
     --testnet-magic ${testnet_magic}

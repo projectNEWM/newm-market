@@ -1,19 +1,19 @@
 use aiken/builtin
 
-pub type PriceMap =
-  Pairs<Int, Int>
+pub type DataMap =
+  Pairs<Int, Data>
 
 pub type PriceData {
-  SharedData
-  ExtendedData
-  GenericData(PriceMap)
+  SharedData(DataMap)
+  ExtendedData(DataMap)
+  GenericData(DataMap)
 }
 
 pub type OracleDatum {
   price_data: PriceData,
 }
 
-pub fn find_value(data: PriceMap, key: Int) -> Int {
+pub fn find_value(data: DataMap, key: Int) -> Data {
   when data is {
     [] -> fail @"Value Not Found"
     [d, ..ds] ->

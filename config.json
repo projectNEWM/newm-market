@@ -11,7 +11,7 @@
   "refundQueueBound": 1000000,
   "startSaleBound": 1000000,
   "__comment5__": "Oracle Feed Information",
-  "oracleValidatorHash": "21f40e565f0c05a7f5e6bab4479376bc667d5dc6b21762a656cc4da7",
-  "oracleFeedPid": "b88cdb6d77bcb6ca9a227bab5d0b6a3b4a47960b41cbab4ede0c8b00",
-  "oracleFeedTkn": "dc2997e4ee6e35cf3d9a0ed7216e6f78b2ec9b3cdb88e6599750bbdf53deda81"
+  "oracleValidatorHash": "220b0fd9d495d29e159206c08879373120e348ea2e33ae3d22ca56e7",
+  "oracleFeedPid": "b4f1a9f4854afd55732b979016be59170fe72a97aa21f3e5a805e94b",
+  "oracleFeedTkn": "8a547f5a391dca1cd16dfc2f25d9f9f795e588f6e4bc24d6655d64c68a994424"
 }

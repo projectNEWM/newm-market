@@ -57,7 +57,7 @@ echo -e "\033[0;36m Building Tx \033[0m"
 FEE=$(${cli} transaction build \
     --babbage-era \
     --out-file ../tmp/tx.draft \
-    --change-address ${receiver_address} \
+    --change-address ${sender_address} \
     --tx-in ${seller_tx_in} \
     --tx-out="${oracle_address_out}" \
     --tx-out-inline-datum-file ../data/oracle/oracle-datum.json \
