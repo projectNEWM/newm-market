@@ -12,8 +12,9 @@ testnet_magic=$(cat ../data/testnet.magic)
 # minting policy
 mint_path1="./policy.script"
 
-starter_address=$(cat ../wallets/starter-wallet/payment.addr)
-starter_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/starter-wallet/payment.vkey)
+starter_path="../wallets/oracle-wallet/"
+starter_address=$(cat ${starter_path}payment.addr)
+starter_pkh=$(${cli} address key-hash --payment-verification-key-file ${starter_path}payment.vkey)
 
 python -c "
 import json; data=json.load(open('./policy.script', 'r'));
@@ -32,7 +33,7 @@ utxo_value=$(${cli} transaction calculate-min-required-utxo \
     --tx-out="${starter_address} + 2000000 + ${mint_asset1}" | tr -dc '0-9')
 
 starter_address_out="${starter_address} + ${utxo_value} + ${mint_asset1}"
-echo "Mint OUTPUT: "${starter_address_out}
+echo "Minting: "${mint_asset1}
 echo "Press Enter to continue, or any other key to exit."
 read -rsn1 input
 
@@ -89,7 +90,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 #
 echo -e "\033[0;36m Signing \033[0m"
 ${cli} transaction sign \
-    --signing-key-file ../wallets/starter-wallet/payment.skey \
+    --signing-key-file ${starter_path}payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
     --testnet-magic ${testnet_magic}

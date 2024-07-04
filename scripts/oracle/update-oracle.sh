@@ -23,7 +23,7 @@ hash2=$(sha256sum "$frontup" | awk '{ print $1 }')
 # Check if the hash values are equal using string comparison in an if statement
 if [ "$hash1" = "$hash2" ]; then
   echo -e "\033[1;46mNo Oracle Update Required\033[0m"
-  exit 0;
+#   exit 0;
 else
   echo -e "\033[1;43mA Datum Update Is Required.\033[0m"
 fi
@@ -41,6 +41,23 @@ script_address=$(${cli} address build --payment-script-file ${oracle_script_path
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
+feed_addr="addr_test1wzn5ee2qaqvly3hx7e0nk3vhm240n5muq3plhjcnvx9ppjgf62u6a"
+feed_pid=$(jq -r ' .feedPid' ../../config.json)
+feed_tkn=$(jq -r '.feedTkn' ../../config.json)
+echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
+${cli} query utxo \
+    --address ${feed_addr} \
+    --testnet-magic ${testnet_magic} \
+    --out-file ../tmp/feed_utxo.json
+TXNS=$(jq length ../tmp/feed_utxo.json)
+if [ "${TXNS}" -eq "0" ]; then
+   echo -e "\n \033[0;31m NO UTxOs Found At ${feed_addr} \033[0m \n";
+   exit;
+fi
+alltxin=""
+TXIN=$(jq -r --arg alltxin "" --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/feed_utxo.json)
+feed_tx_in=${TXIN::-8}
+echo Feed UTxO: $feed_tx_in
 
 policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
 token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
@@ -110,6 +127,7 @@ FEE=$(${cli} transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${sender_address} \
     --tx-in-collateral ${collat_utxo} \
+    --read-only-tx-in-reference ${feed_tx_in} \
     --tx-in ${seller_tx_in} \
     --tx-in ${script_tx_in} \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
@@ -127,7 +145,7 @@ IFS=' ' read -ra FEE <<< "${VALUE[1]}"
 FEE=${FEE[1]}
 echo -e "\033[1;32m Fee: \033[0m" $FEE
 #
-# exit
+exit
 #
 echo -e "\033[0;36m Signing \033[0m"
 ${cli} transaction sign \

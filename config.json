@@ -12,6 +12,9 @@
   "startSaleBound": 1000000,
   "__comment5__": "Oracle Feed Information",
   "oracleValidatorHash": "220b0fd9d495d29e159206c08879373120e348ea2e33ae3d22ca56e7",
-  "oracleFeedPid": "b4f1a9f4854afd55732b979016be59170fe72a97aa21f3e5a805e94b",
-  "oracleFeedTkn": "8a547f5a391dca1cd16dfc2f25d9f9f795e588f6e4bc24d6655d64c68a994424"
+  "oracleFeedPid": "7f55264258ab7bc5279865ab22e2cb41e80703b555e462e8e3f00c4f",
+  "oracleFeedTkn": "d18b46397646b20995925b429042a49e02bf04a5e1c6063cdb292b78a63ca548",
+  "feedHash": "a74ce540e819f246e6f65f3b4597daaaf9d37c0443fbcb13618a10c9",
+  "feedPid": "1116903479e7320b8e4592207aaebf627898267fcd80e2d9646cbf07",
+  "feedTkn": "4f7261636c6546656564"
 }
