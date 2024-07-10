@@ -3,7 +3,7 @@
 use aiken/transaction.{Input, ScriptContext, Spend, Transaction}
 use aiken/transaction/credential.{Address}
 use aiken/transaction/value.{AssetName, PolicyId}
-use assist/data
+// use assist/data
 use assist/find
 use assist/types/hashes.{ValidatorHash}
 use assist/values
@@ -15,11 +15,10 @@ validator(feed_pid: PolicyId, feed_tkn: AssetName, feed_hash: ValidatorHash) {
     _redeemer: Void,
     context: ScriptContext,
   ) -> Bool {
-    expect Spend(output_reference) = context.purpose
-    let Transaction { inputs, outputs, reference_inputs, .. } =
-      context.transaction
-    let this_input: Input = find.input_by_ref(inputs, output_reference)
-    let this_addr: Address = this_input.output.address
+    expect Spend(_) = context.purpose
+    let Transaction { reference_inputs, .. } = context.transaction
+    // let this_input: Input = find.input_by_ref(inputs, output_reference)
+    // let this_addr: Address = this_input.output.address
     let feed_addr: Address = credential.from_script(feed_hash)
     let feed_input: Input = find.input_by_addr(reference_inputs, feed_addr)
     // expect _: OracleDatum = data.input_datum(feed_input)
