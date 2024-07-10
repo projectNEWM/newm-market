@@ -13,19 +13,8 @@ sender_address=$(cat ${sender_path}payment.addr)
 receiver_address=${sender_address}
 # receiver_address="addr_test1qrvnxkaylr4upwxfxctpxpcumj0fl6fdujdc72j8sgpraa9l4gu9er4t0w7udjvt2pqngddn6q4h8h3uv38p8p9cq82qav4lmp"
 
-# cost value + incentive + bundle
-worst_case_token="9223372036854775807 015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d.015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d00000000
-+ 9223372036854775807 115d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d.015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d00000000
-+ 9223372036854775807 215d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d.015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d00000000
-"
-min_utxo_value=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
-        --protocol-params-file ./tmp/protocol.json \
-        --tx-out="${sender_address} + 5000000 + ${worst_case_token}" | tr -dc '0-9')
-echo $min_utxo_value
-
 #
-exit
+# exit
 #
 echo -e "\033[0;36m Gathering UTxO Information  \033[0m"
 ${cli} query utxo \
@@ -67,7 +56,7 @@ ${cli} transaction sign \
     --out-file tmp/tx.signed \
     --testnet-magic ${testnet_magic}
 #
-exit
+# exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
