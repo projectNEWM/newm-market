@@ -7,7 +7,7 @@ pub type PriceMap =
 pub type PriceData {
   SharedData
   ExtendedData
-  GenericData(PriceMap)
+  GenericData { price_map: PriceMap }
 }
 
 pub type OracleDatum {
