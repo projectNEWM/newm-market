@@ -7,14 +7,11 @@ use aiken/transaction/value.{AssetName, PolicyId}
 use assist/find
 use assist/types/hashes.{ValidatorHash}
 use assist/values
-use newm_market/types/oracle.{OracleDatum}
+
+// use newm_market/types/oracle.{OracleDatum}
 
 validator(feed_pid: PolicyId, feed_tkn: AssetName, feed_hash: ValidatorHash) {
-  fn params(
-    _datum: OracleDatum,
-    _redeemer: Void,
-    context: ScriptContext,
-  ) -> Bool {
+  fn params(_datum: Data, _redeemer: Void, context: ScriptContext) -> Bool {
     expect Spend(_) = context.purpose
     let Transaction { reference_inputs, .. } = context.transaction
     // let this_input: Input = find.input_by_ref(inputs, output_reference)
