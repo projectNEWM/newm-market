@@ -9,14 +9,18 @@ use assist/find
 use assist/payout
 use assist/signing
 use assist/types/hashes.{ValidatorHash}
+use assist/types/moment.{Moment}
 use assist/types/token.{Token}
+use assist/types/wallet.{Wallet}
 use assist/values
 use newm_market/constants
+use newm_market/types/oracle.{OracleDatum}
 use newm_market/types/queue.{
   QueueCancel, QueueDatum, QueuePurchase, QueueRedeemer, QueueRefund,
 }
 use newm_market/types/reference.{ReferenceDatum}
 use newm_market/types/sale.{Purchase, SaleDatum, SaleRedeemer}
+use newm_market/types/vault.{AddToVault, VaultRedeemer}
 
 validator(
   starter_pid: PolicyId,
@@ -37,6 +41,7 @@ validator(
       fee,
       extra_signatories,
       redeemers,
+      validity_range,
       ..
     } = context.transaction
     // the reference this_datum
@@ -45,24 +50,48 @@ validator(
     let this_value: Value = this_input.output.value
     let this_addr: Address = this_input.output.address
     when redeemer is {
-      // a batcher can complete a purchase from the queue
+      // a batcher can complete a purchase from the queue, for profit
       QueuePurchase -> {
+        //
         // data reference stuff
         let ref_addr: Address = credential.from_script(ref_hash)
         let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
         expect ref_datum: ReferenceDatum = data.input_datum(ref_input)
+        //
         // sale stuff
         let sale_addr: Address =
           addresses.create_script_address(
             ref_datum.contracts.sale,
             ref_datum.contracts.stake,
           )
-        // get the sale input output reference from the inputs
         let sale_input: Input = find.input_by_addr(inputs, sale_addr)
         let sale_out_ref: OutputReference = sale_input.output_reference
-        // the current value on the sale utxo
         let sale_value: Value = sale_input.output.value
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
+        //
+        // vault stuff
+        let vault_addr: Address =
+          addresses.create_script_address(
+            ref_datum.contracts.vault,
+            ref_datum.contracts.stake,
+          )
+        let vault_input: Input = find.input_by_addr(inputs, vault_addr)
+        let vault_out_ref: OutputReference = vault_input.output_reference
+        let vault_value: Value = vault_input.output.value
+        //
+        // oracle profit stuff
+        let feed_addr: Address =
+          credential.from_script(ref_datum.profit_data.feed_vkh)
+        let feed_input: Input = find.input_by_addr(reference_inputs, feed_addr)
+        expect feed_datum: OracleDatum = data.input_datum(feed_input)
+        let feed_price: Int = oracle.get_price(feed_datum)
+        let feed_moment: Moment = oracle.get_moment(feed_datum)
+        let newm_profit: Int =
+          oracle.calculate_profit(
+            ref_datum.profit_data.profit_margin,
+            feed_price,
+          )
+        //
         // find the quantity of the bundle token on the sale utxo
         let cur_bundle_tkn_amt: Int =
           value.quantity_of(
@@ -70,10 +99,10 @@ validator(
             sale_datum.bundle.pid,
             sale_datum.bundle.tkn,
           )
-        // allows for a partial bundle to be fulfilled
         let number_of_bundles: Int =
-          // the amount on the sale utxo divided by the max sale amount is less
-          // than what the buyer wants to get as defined in the queue datum
+          // allows for a partial bundle to be fulfilled
+          // if the current number of bundles is less than what the queue wants
+          // then get the leftover for a part fill else get what you want
           if
           cur_bundle_tkn_amt / sale_datum.bundle.amt < this_datum.number_of_bundles{
           
@@ -83,10 +112,13 @@ validator(
             // or get what you want
             this_datum.number_of_bundles
           }
+        //
         // calculate the total cost for the number of bundles
         let total_cost: Token =
           token.multiply(sale_datum.cost, number_of_bundles)
-        // add total cost, remove the number of bundles
+        //
+        // the value returning to the sale contract
+        // add the cost to the sale value and remove the bundles
         let return_sale_value: Value =
           token.add_token_to_value(sale_value, total_cost)
             |> value.add(
@@ -94,7 +126,9 @@ validator(
                 sale_datum.bundle.tkn,
                 -number_of_bundles * sale_datum.bundle.amt,
               )
-        // remove the fee, cost value, and incentive
+        //
+        // The value returning to the queue contract
+        // remove the fee, cost value, incentive, and profit
         // add the bundle value
         let return_queue_value: Value =
           token.add_token_to_value(this_value, token.negative(total_cost))
@@ -109,23 +143,57 @@ validator(
                 this_datum.incentive.tkn,
                 -this_datum.incentive.amt,
               )
+            |> value.add(
+                ref_datum.profit_data.profit_pid,
+                ref_datum.profit_data.profit_tkn,
+                -newm_profit,
+              )
+        //
+        // the value returning to the vault contract
+        // add the newm profit
+        let return_vault_value: Value =
+          vault_value
+            |> value.add(
+                ref_datum.profit_data.profit_pid,
+                ref_datum.profit_data.profit_tkn,
+                newm_profit,
+              )
+        //
         // the queue_datum going back to the queue contract
         expect that_datum: QueueDatum =
           find.output_datum_by_addr(outputs, this_addr)
-        // this should fail for bad data
-        // the redeemer is now the general redeemer type that we seek out the specific sub redeemer
-        expect that_redeemer: SaleRedeemer =
+        //
+        // get the correct sale
+        expect that_sale_redeemer: SaleRedeemer =
           find.redeemer_by_ref(redeemers, sale_out_ref)
-        let is_corect_redeemer: Bool =
-          when that_redeemer is {
+        let is_correct_sale_redeemer: Bool =
+          when that_sale_redeemer is {
             // only the purchase redeemer is allowed
             Purchase -> True
             _ -> fail @"Incorrect Sale Redeemer"
           }
         //
+        // get correct vault
+        expect that_vault_redeemer: VaultRedeemer =
+          find.redeemer_by_ref(redeemers, vault_out_ref)
+        let is_corect_vault_redeemer: Bool =
+          when that_vault_redeemer is {
+            // only the purchase redeemer is allowed
+            AddToVault(_) -> True
+            _ -> fail @"Incorrect Vault Redeemer"
+          }
+        //
         //
         //
         and {
+          // oracle must have correct feed token
+          values.prove_exact_nft(
+            feed_input.output.value,
+            ref_datum.profit_data.feed_pid,
+            ref_datum.profit_data.feed_tkn,
+          )?,
+          // oracle moment needs to be valid
+          moment.is_contained(feed_moment, validity_range)?,
           // single sale script input
           count.inputs_by_addr(inputs, sale_addr, 1)?,
           // one sale script output
@@ -134,8 +202,12 @@ validator(
           payout.exact(this_addr, return_queue_value, outputs)?,
           // sale gets the cost
           payout.exact(sale_addr, return_sale_value, outputs)?,
+          // vault gets the profit
+          payout.exact(vault_addr, return_vault_value, outputs)?,
           // correct redeemer on the sale contract side
-          is_corect_redeemer?,
+          is_correct_sale_redeemer?,
+          // correct redeemer on the vault contract side
+          is_corect_vault_redeemer?,
           // keep the datum constant
           (this_datum == that_datum)?,
           // prove correct sale datum
@@ -169,24 +241,38 @@ validator(
           )?,
         }
       }
-      // a batcher can auto refund a completed queue item
+      // a batcher can auto refund a completed queue item, not for profit
       QueueRefund -> {
+        //
         // data reference stuff
         let ref_addr: Address = credential.from_script(ref_hash)
         let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
         expect ref_datum: ReferenceDatum = data.input_datum(ref_input)
+        //
         // sale stuff
         let sale_addr: Address =
           addresses.create_script_address(
             ref_datum.contracts.sale,
             ref_datum.contracts.stake,
           )
-        // get the sale input output reference from the reference inputs
         let sale_input: Input = find.input_by_addr(reference_inputs, sale_addr)
         let sale_out_ref: OutputReference = sale_input.output_reference
-        // the current value on the sale utxo
         let sale_value: Value = sale_input.output.value
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
+        //
+        // oracle profit stuff
+        let feed_addr: Address =
+          credential.from_script(ref_datum.profit_data.feed_vkh)
+        let feed_input: Input = find.input_by_addr(reference_inputs, feed_addr)
+        expect feed_datum: OracleDatum = data.input_datum(feed_input)
+        let feed_price: Int = oracle.get_price(feed_datum)
+        let feed_moment: Moment = oracle.get_moment(feed_datum)
+        let newm_profit: Int =
+          oracle.calculate_profit(
+            ref_datum.profit_data.profit_margin,
+            feed_price,
+          )
+        //
         // calculate the total cost for the number of bundles
         let total_cost: Token =
           token.multiply(sale_datum.cost, this_datum.number_of_bundles)
@@ -200,13 +286,19 @@ validator(
         // check the state of the sale with a queue item.
         let is_refund_allowed: Bool =
           if
-          // Can the queue entry even pay for the token bundle if you removed the incentive?
+          // Can the queue entry even pay for the token bundle if you removed 
+          // the incentive and what would be the profit?
           value.quantity_of(
             this_value
               |> value.add(
                   this_datum.incentive.pid,
                   this_datum.incentive.tkn,
                   -this_datum.incentive.amt,
+                )
+              |> value.add(
+                  ref_datum.profit_data.profit_pid,
+                  ref_datum.profit_data.profit_tkn,
+                  -newm_profit,
                 ),
             total_cost.pid,
             total_cost.tkn,
@@ -246,6 +338,14 @@ validator(
         //
         //
         and {
+          // oracle must have correct feed token
+          values.prove_exact_nft(
+            feed_input.output.value,
+            ref_datum.profit_data.feed_pid,
+            ref_datum.profit_data.feed_tkn,
+          )?,
+          // oracle moment needs to be valid
+          moment.is_contained(feed_moment, validity_range)?,
           // single script input
           count.inputs_by_addr(inputs, this_addr, 1)?,
           // prove correct reference datum
