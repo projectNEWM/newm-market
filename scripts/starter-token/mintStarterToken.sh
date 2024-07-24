@@ -12,7 +12,7 @@ testnet_magic=$(cat ../data/testnet.magic)
 # minting policy
 mint_path1="./policy.script"
 
-starter_path="../wallets/oracle-wallet/"
+starter_path="../wallets/starter-wallet/"
 starter_address=$(cat ${starter_path}payment.addr)
 starter_pkh=$(${cli} address key-hash --payment-verification-key-file ${starter_path}payment.vkey)
 
