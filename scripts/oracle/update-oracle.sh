@@ -38,6 +38,8 @@ feed_tx_in=${TXIN::-8}
 echo Feed UTxO: $feed_tx_in
 feed_datum=$(jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .value.inlineDatum' ../tmp/feed_utxo.json)
 
+current_price=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[0].v.int')
+echo Current ADA/USD Price: $current_price
 start_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[1].v.int')
 end_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[2].v.int')
 
@@ -51,16 +53,11 @@ end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp
 echo Start: $start_slot
 echo End: $end_slot
 
-# policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
-# token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
-# asset="1 ${policy_id}.${token_name}"
-
 min_value=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/oracle/oracle-datum.json \
     --tx-out="${script_address} + 5000000" | tr -dc '0-9')
-    # --tx-out="${script_address} + 5000000 + ${asset}" | tr -dc '0-9')
 
 oracle_address_out="${script_address} + ${min_value}"
 echo "Oracle OUTPUT: "${oracle_address_out}
@@ -81,7 +78,6 @@ if [ "${TXNS}" -eq "0" ]; then
    exit;
 fi
 alltxin=""
-# TXIN=$(jq -r --arg alltxin "" --arg policy_id "$policy_id" --arg token_name "$token_name" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
 TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
 script_tx_in=${TXIN::-8}
 echo Oracle UTxO: $script_tx_in

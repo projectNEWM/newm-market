@@ -13,16 +13,11 @@ sender_address=$(cat ${sender_path}payment.addr)
 oracle_script_path="../../contracts/oracle_contract.plutus"
 script_address=$(${cli} address build --payment-script-file ${oracle_script_path} --testnet-magic ${testnet_magic})
 
-# policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
-# token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
-# asset="1 ${policy_id}.${token_name}"
-
 min_value=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/oracle/oracle-datum.json \
     --tx-out="${script_address} + 5000000" | tr -dc '0-9')
-    # --tx-out="${script_address} + 5000000 + ${asset}" | tr -dc '0-9')
 
 oracle_address_out="${script_address} + ${min_value}"
 echo "Oracle OUTPUT: "${oracle_address_out}
