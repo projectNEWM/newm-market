@@ -8,11 +8,11 @@ testnet_magic=$(cat ../data/testnet.magic)
 backup="../data/oracle/copy.oracle-datum.json"
 frontup="../data/oracle/oracle-datum.json"
 
-curl -X POST "https://api.koios.rest/api/v1/address_utxos" \
-    -H "accept: application/json"\
-    -H "content-type: application/json" \
-    -d '{"_addresses":["addr1wy32q7067yt9c2em8kx5us4vhxzv4xve24u6j8ptlc5mzqcahrwzt"], "_extended":true}' \
-    | jq -r 'to_entries[] | select(.value.asset_list[0].asset_name=="4f7261636c6546656564") | .value.inline_datum.value' > ../data/oracle/oracle-datum.json
+# curl -X POST "https://api.koios.rest/api/v1/address_utxos" \
+#     -H "accept: application/json"\
+#     -H "content-type: application/json" \
+#     -d '{"_addresses":["addr1wy32q7067yt9c2em8kx5us4vhxzv4xve24u6j8ptlc5mzqcahrwzt"], "_extended":true}' \
+#     | jq -r 'to_entries[] | select(.value.asset_list[0].asset_name=="4f7261636c6546656564") | .value.inline_datum.value' > ../data/oracle/oracle-datum.json
 
 # Addresses
 sender_path="../wallets/oracle-wallet/"
@@ -22,17 +22,18 @@ sender_address=$(cat ${sender_path}payment.addr)
 oracle_script_path="../../contracts/oracle_contract.plutus"
 script_address=$(${cli} address build --payment-script-file ${oracle_script_path} --testnet-magic ${testnet_magic})
 
-policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
-token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
-asset="1 ${policy_id}.${token_name}"
+# policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
+# token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
+# asset="1 ${policy_id}.${token_name}"
 
 min_value=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/oracle/oracle-datum.json \
-    --tx-out="${script_address} + 5000000 + ${asset}" | tr -dc '0-9')
+    --tx-out="${script_address} + 5000000" | tr -dc '0-9')
+    # --tx-out="${script_address} + 5000000 + ${asset}" | tr -dc '0-9')
 
-oracle_address_out="${script_address} + ${min_value} + ${asset}"
+oracle_address_out="${script_address} + ${min_value}"
 echo "Oracle OUTPUT: "${oracle_address_out}
 
 #

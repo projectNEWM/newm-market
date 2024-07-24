@@ -10,11 +10,11 @@ frontup="../data/oracle/oracle-datum.json"
 
 cp ../data/oracle/oracle-datum.json ../data/oracle/copy.oracle-datum.json
 
-curl -X POST "https://api.koios.rest/api/v1/address_utxos" \
-    -H "accept: application/json"\
-    -H "content-type: application/json" \
-    -d '{"_addresses":["addr1wy32q7067yt9c2em8kx5us4vhxzv4xve24u6j8ptlc5mzqcahrwzt"], "_extended":true}' \
-    | jq -r 'to_entries[] | select(.value.asset_list[0].asset_name=="4f7261636c6546656564") | .value.inline_datum.value' > ../data/oracle/oracle-datum.json
+# curl -X POST "https://api.koios.rest/api/v1/address_utxos" \
+#     -H "accept: application/json"\
+#     -H "content-type: application/json" \
+#     -d '{"_addresses":["addr1wy32q7067yt9c2em8kx5us4vhxzv4xve24u6j8ptlc5mzqcahrwzt"], "_extended":true}' \
+#     | jq -r 'to_entries[] | select(.value.asset_list[0].asset_name=="4f7261636c6546656564") | .value.inline_datum.value' > ../data/oracle/oracle-datum.json
 
 
 hash1=$(sha256sum "$backup" | awk '{ print $1 }')
@@ -44,6 +44,7 @@ collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/
 feed_addr="addr_test1wzn5ee2qaqvly3hx7e0nk3vhm240n5muq3plhjcnvx9ppjgf62u6a"
 feed_pid=$(jq -r ' .feedPid' ../../config.json)
 feed_tkn=$(jq -r '.feedTkn' ../../config.json)
+
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${feed_addr} \
@@ -58,18 +59,21 @@ alltxin=""
 TXIN=$(jq -r --arg alltxin "" --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/feed_utxo.json)
 feed_tx_in=${TXIN::-8}
 echo Feed UTxO: $feed_tx_in
+jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .value.inlineDatum' ../tmp/feed_utxo.json
+# exit
 
-policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
-token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
-asset="1 ${policy_id}.${token_name}"
+# policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
+# token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
+# asset="1 ${policy_id}.${token_name}"
 
 min_value=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/oracle/oracle-datum.json \
-    --tx-out="${script_address} + 5000000 + ${asset}" | tr -dc '0-9')
+    --tx-out="${script_address} + 5000000" | tr -dc '0-9')
+    # --tx-out="${script_address} + 5000000 + ${asset}" | tr -dc '0-9')
 
-oracle_address_out="${script_address} + ${min_value} + ${asset}"
+oracle_address_out="${script_address} + ${min_value}"
 echo "Oracle OUTPUT: "${oracle_address_out}
 
 #
@@ -88,9 +92,12 @@ if [ "${TXNS}" -eq "0" ]; then
    exit;
 fi
 alltxin=""
-TXIN=$(jq -r --arg alltxin "" --arg policy_id "$policy_id" --arg token_name "$token_name" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
+# TXIN=$(jq -r --arg alltxin "" --arg policy_id "$policy_id" --arg token_name "$token_name" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
+TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
 script_tx_in=${TXIN::-8}
 echo Oracle UTxO: $script_tx_in
+
+# exit
 
 echo -e "\033[0;36m Gathering UTxO Information  \033[0m"
 ${cli} query utxo \
