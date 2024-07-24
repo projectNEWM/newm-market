@@ -65,7 +65,7 @@ starter_tx_in=${TXIN::-8}
 # slot contraints
 slot=$(${cli} query tip --testnet-magic ${testnet_magic} | jq .slot)
 current_slot=$(($slot - 1))
-final_slot=$(($slot + 2500))
+final_slot=$(($slot + 600))
 
 # exit
 echo -e "\033[0;36m Building Tx \033[0m"

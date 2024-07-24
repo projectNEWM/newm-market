@@ -106,10 +106,10 @@ pid_cbor=$(python3 -c "import cbor2;hex_string='${pid}';data = bytes.fromhex(hex
 tkn_cbor=$(python3 -c "import cbor2;hex_string='${tkn}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
 ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
 
-aiken blueprint convert -v oracle.params > contracts/oracle_contract.plutus
 aiken blueprint apply -o plutus.json -v oracle.params "${pid_cbor}"
 aiken blueprint apply -o plutus.json -v oracle.params "${tkn_cbor}"
 aiken blueprint apply -o plutus.json -v oracle.params "${ref_cbor}"
+aiken blueprint convert -v oracle.params > contracts/oracle_contract.plutus
 cardano-cli transaction policyid --script-file contracts/oracle_contract.plutus > hashes/oracle.hash
 
 ###############################################################################

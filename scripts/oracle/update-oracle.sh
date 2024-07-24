@@ -5,29 +5,6 @@ export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
 testnet_magic=$(cat ../data/testnet.magic)
 
-backup="../data/oracle/copy.oracle-datum.json"
-frontup="../data/oracle/oracle-datum.json"
-
-cp ../data/oracle/oracle-datum.json ../data/oracle/copy.oracle-datum.json
-
-# curl -X POST "https://api.koios.rest/api/v1/address_utxos" \
-#     -H "accept: application/json"\
-#     -H "content-type: application/json" \
-#     -d '{"_addresses":["addr1wy32q7067yt9c2em8kx5us4vhxzv4xve24u6j8ptlc5mzqcahrwzt"], "_extended":true}' \
-#     | jq -r 'to_entries[] | select(.value.asset_list[0].asset_name=="4f7261636c6546656564") | .value.inline_datum.value' > ../data/oracle/oracle-datum.json
-
-
-hash1=$(sha256sum "$backup" | awk '{ print $1 }')
-hash2=$(sha256sum "$frontup" | awk '{ print $1 }')
-
-# Check if the hash values are equal using string comparison in an if statement
-if [ "$hash1" = "$hash2" ]; then
-  echo -e "\033[1;46mNo Oracle Update Required\033[0m"
-#   exit 0;
-else
-  echo -e "\033[1;43mA Datum Update Is Required.\033[0m"
-fi
-
 # Addresses
 sender_path="../wallets/oracle-wallet/"
 sender_address=$(cat ${sender_path}payment.addr)
@@ -59,8 +36,20 @@ alltxin=""
 TXIN=$(jq -r --arg alltxin "" --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/feed_utxo.json)
 feed_tx_in=${TXIN::-8}
 echo Feed UTxO: $feed_tx_in
-jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .value.inlineDatum' ../tmp/feed_utxo.json
-# exit
+feed_datum=$(jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .value.inlineDatum' ../tmp/feed_utxo.json)
+
+start_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[1].v.int')
+end_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[2].v.int')
+
+# subtract a second from it so its forced to be contained
+timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${start_time} / 1000 + 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+start_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
+
+timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${end_time} / 1000 - 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
+
+echo Start: $start_slot
+echo End: $end_slot
 
 # policy_id=$(jq -r ' .oracleFeedPid' ../../config.json)
 # token_name=$(jq -r '.oracleFeedTkn' ../../config.json)
@@ -128,10 +117,13 @@ collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
 script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/oracle-reference-utxo.signed )
 
+
 echo -e "\033[0;36m Building Tx \033[0m"
 FEE=$(${cli} transaction build \
     --babbage-era \
     --out-file ../tmp/tx.draft \
+    --invalid-before ${start_slot} \
+    --invalid-hereafter ${end_slot} \
     --change-address ${sender_address} \
     --tx-in-collateral ${collat_utxo} \
     --read-only-tx-in-reference ${feed_tx_in} \
@@ -152,7 +144,7 @@ IFS=' ' read -ra FEE <<< "${VALUE[1]}"
 FEE=${FEE[1]}
 echo -e "\033[1;32m Fee: \033[0m" $FEE
 #
-exit
+# exit
 #
 echo -e "\033[0;36m Signing \033[0m"
 ${cli} transaction sign \

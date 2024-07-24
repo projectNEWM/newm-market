@@ -5,15 +5,6 @@ export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
 testnet_magic=$(cat ../data/testnet.magic)
 
-backup="../data/oracle/copy.oracle-datum.json"
-frontup="../data/oracle/oracle-datum.json"
-
-# curl -X POST "https://api.koios.rest/api/v1/address_utxos" \
-#     -H "accept: application/json"\
-#     -H "content-type: application/json" \
-#     -d '{"_addresses":["addr1wy32q7067yt9c2em8kx5us4vhxzv4xve24u6j8ptlc5mzqcahrwzt"], "_extended":true}' \
-#     | jq -r 'to_entries[] | select(.value.asset_list[0].asset_name=="4f7261636c6546656564") | .value.inline_datum.value' > ../data/oracle/oracle-datum.json
-
 # Addresses
 sender_path="../wallets/oracle-wallet/"
 sender_address=$(cat ${sender_path}payment.addr)
