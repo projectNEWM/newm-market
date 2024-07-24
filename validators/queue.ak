@@ -200,9 +200,17 @@ validator(
         // check the state of the sale with a queue item.
         let is_refund_allowed: Bool =
           if
-          // Does the cost exist in the this value?
-          // i.e. Can the queue entry even pay for the token bundle?
-          value.quantity_of(this_value, total_cost.pid, total_cost.tkn) >= total_cost.amt{
+          // Can the queue entry even pay for the token bundle if you removed the incentive?
+          value.quantity_of(
+            this_value
+              |> value.add(
+                  this_datum.incentive.pid,
+                  this_datum.incentive.tkn,
+                  -this_datum.incentive.amt,
+                ),
+            total_cost.pid,
+            total_cost.tkn,
+          ) >= total_cost.amt{
           
             // The queue entry could pay for some amount of bundles if they exist.
             //

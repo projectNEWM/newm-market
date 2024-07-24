@@ -97,6 +97,21 @@ aiken blueprint apply -o plutus.json -v batcher.params "${ref_cbor}"
 aiken blueprint convert -v batcher.params > contracts/batcher_contract.plutus
 cardano-cli transaction policyid --script-file contracts/batcher_contract.plutus > hashes/batcher.hash
 
+echo -e "\033[1;33m Convert Testing Purpose Only C3 Oracle Contract \033[0m"
+
+pid=$(jq -r '.feedPid' config.json)
+tkn=$(jq -r '.feedTkn' config.json)
+ref=$(jq -r '.feedHash' config.json)
+pid_cbor=$(python3 -c "import cbor2;hex_string='${pid}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
+tkn_cbor=$(python3 -c "import cbor2;hex_string='${tkn}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
+ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
+
+aiken blueprint apply -o plutus.json -v oracle.params "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v oracle.params "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v oracle.params "${ref_cbor}"
+aiken blueprint convert -v oracle.params > contracts/oracle_contract.plutus
+cardano-cli transaction policyid --script-file contracts/oracle_contract.plutus > hashes/oracle.hash
+
 ###############################################################################
 ############## DATUM AND REDEEMER STUFF #######################################
 ###############################################################################
