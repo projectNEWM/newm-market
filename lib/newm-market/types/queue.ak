@@ -53,19 +53,3 @@ pub type QueueRedeemer {
   QueueRefund
   QueueCancel
 }
-
-pub fn calculate_profit(margin: Int, feed: Int) -> Int {
-  margin / feed
-}
-
-test fifty_cent_newm() {
-  let m: Int = 500000000000
-  let f: Int = 2723
-  calculate_profit(m, f) == 183621006
-}
-
-test nintynine_cent_newm() {
-  let m: Int = 990000000000
-  let f: Int = 2723
-  calculate_profit(m, f) == 363569592
-}

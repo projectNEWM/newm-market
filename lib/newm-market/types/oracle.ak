@@ -84,3 +84,34 @@ test get_oracle_moment() {
     time_window.end == 1720078407332,
   }
 }
+
+pub fn calculate_profit(margin: Int, feed: Int) -> Int {
+  margin / feed
+}
+
+test usd_to_newm_conversion_nintynine_cent_newm() {
+  // 1 NEWM = 0.002723 USD
+  let p: Int = 2723
+  // 1000000 * 0.99 * 1000000
+  let fifty_cents: Int = 990_000_000_000
+  let newm_amount: Int = calculate_profit(fifty_cents, p)
+  newm_amount == 363_569_592
+}
+
+test usd_to_newm_conversion_fifty_cent_newm() {
+  // 1 NEWM = 0.002723 USD
+  let p: Int = 2723
+  // 1000000 * 0.50 * 1000000
+  let fifty_cents: Int = 500_000_000_000
+  let newm_amount: Int = calculate_profit(fifty_cents, p)
+  newm_amount == 183_621_006
+}
+
+test usd_to_newm_conversion_forty_one_cent_newm() {
+  // 1 NEWM = 0.00275 USD
+  let p: Int = 2750
+  // 1000000 * 0.41 * 1000000
+  let forty_one_cents: Int = 410_000_000_000
+  let newm_amount: Int = calculate_profit(forty_one_cents, p)
+  newm_amount == 149_090_909
+}
