@@ -97,16 +97,16 @@ do
 done
 
 echo -e "\033[1;37m --------------------------------------------------------------------------------\033[0m"
-# now submit them in that order
-for contract in $(ls "../contracts"/* | sort -V)
-do
-    file_name=$(basename "${contract}")
-    first_word=${file_name%%_*}
-    echo -e "\nSubmitting ${first_word}"
-    # Perform operations on each file
-    ${cli} transaction submit \
-        ${network} \
-        --tx-file ./tmp/${first_word}-reference-utxo.signed
-done
+# # now submit them in that order
+# for contract in $(ls "../contracts"/* | sort -V)
+# do
+#     file_name=$(basename "${contract}")
+#     first_word=${file_name%%_*}
+#     echo -e "\nSubmitting ${first_word}"
+#     # Perform operations on each file
+#     ${cli} transaction submit \
+#         ${network} \
+#         --tx-file ./tmp/${first_word}-reference-utxo.signed
+# done
 
 echo -e "\033[0;32m\nDone!\033[0m"

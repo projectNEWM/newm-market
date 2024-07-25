@@ -8,4 +8,5 @@ pub const complete_set_token_name = #"c011ec7ed000a55e75"
 pub type Lovelace =
   Int
 
+// 10 ADA is the default vault minimum
 pub const vault_minimum_lovelace: Lovelace = 10_000_000

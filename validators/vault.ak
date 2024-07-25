@@ -50,6 +50,8 @@ validator(
         //
         //
         and {
+          // the batcher deposit can not be removed
+          (value.lovelace_of(that_value) >= constants.vault_minimum_lovelace)?,
           // hot key must sign
           signing.verify_sig(extra_signatories, this_datum.pkh)?,
           // datum can't change
@@ -57,7 +59,7 @@ validator(
           // can only add a token
           token.addition_only(incoming)?,
           // send at least that value to this address
-          payout.at_least(this_addr, that_value, outputs)?,
+          payout.exact(this_addr, that_value, outputs)?,
           // single script input
           count.inputs_by_addr(inputs, this_addr, 1)?,
           // single script output
