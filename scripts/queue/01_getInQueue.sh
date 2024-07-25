@@ -55,9 +55,40 @@ cost_amt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
 pay_amt=$((${bundleSize} * ${cost_amt}))
 
 cost="${pay_amt} ${cost_pid}.${cost_tkn}"
-
+echo Cost: ${cost}
 # hardcode for now
 incentive="2000000 769c4c6e9bc3ba5406b9b89fb7beb6819e638ff2e2de63f008d5bcff.744e45574d"
+
+feed_addr="addr_test1wzn5ee2qaqvly3hx7e0nk3vhm240n5muq3plhjcnvx9ppjgf62u6a"
+feed_pid=$(jq -r ' .feedPid' ../../config.json)
+feed_tkn=$(jq -r '.feedTkn' ../../config.json)
+
+echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
+${cli} query utxo \
+    --address ${feed_addr} \
+    --testnet-magic ${testnet_magic} \
+    --out-file ../tmp/feed_utxo.json
+TXNS=$(jq length ../tmp/feed_utxo.json)
+if [ "${TXNS}" -eq "0" ]; then
+   echo -e "\n \033[0;31m NO UTxOs Found At ${feed_addr} \033[0m \n";
+   exit;
+fi
+alltxin=""
+TXIN=$(jq -r --arg alltxin "" --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/feed_utxo.json)
+feed_tx_in=${TXIN::-8}
+echo Feed UTxO: $feed_tx_in
+feed_datum=$(jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .value.inlineDatum' ../tmp/feed_utxo.json)
+
+current_price=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[0].v.int')
+echo Current ADA/USD Price: $current_price
+margin=$(jq '.fields[7].fields[5].int' ../data/reference/reference-datum.json)
+profit_pid=$(jq -r '.fields[7].fields[3].bytes' ../data/reference/reference-datum.json)
+profit_tkn=$(jq -r '.fields[7].fields[4].bytes' ../data/reference/reference-datum.json)
+
+# profit + 20%
+profit_amt=$(python -c "print(int(1.2 * ${margin} // ${current_price}))")
+
+profit="${profit_amt} ${profit_pid}.${profit_tkn}"
 
 # this pays for the fees
 pub=$(jq '.fields[4].fields[0].int' ../data/reference/reference-datum.json)
@@ -76,11 +107,11 @@ min_utxo_value=$(${cli} transaction calculate-min-required-utxo \
         --tx-out-inline-datum-file ../data/queue/queue-datum.json \
         --tx-out="${script_address} + 5000000 + ${worst_case_token}" | tr -dc '0-9')
 adaPay=$((${min_utxo_value} + ${gas}))
-script_address_out="${script_address} + ${adaPay} + ${cost} + ${incentive}"
+script_address_out="${script_address} + ${adaPay} + ${cost} + ${incentive} + ${profit}"
 
 echo "Script OUTPUT: "${script_address_out}
 #
-# exit
+exit
 #
 echo -e "\033[0;36m Gathering Buyer UTxO Information  \033[0m"
 ${cli} query utxo \
