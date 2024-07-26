@@ -1,6 +1,6 @@
 use aiken/bytearray
 use aiken/transaction/credential.{PoolId}
-use aiken/transaction/value.{PolicyId, Value}
+use aiken/transaction/value.{AssetName, PolicyId, Value}
 use assist/types/hashes.{PublicKeyHash, ValidatorHash}
 use assist/types/wallet.{Wallet}
 use newm_market/constants.{Lovelace}
@@ -92,6 +92,18 @@ pub type BatcherData {
   batcher_pid: PolicyId,
 }
 
+/// Holds the oracle feed validator key hash and feed token, the profit policy
+/// id and token name, and the profit margin.
+///
+pub type ProfitData {
+  feed_vkh: ValidatorHash,
+  feed_pid: PolicyId,
+  feed_tkn: AssetName,
+  profit_pid: PolicyId,
+  profit_tkn: AssetName,
+  profit_margin: Int,
+}
+
 /// The reference data to be used inside other contracts.
 pub type ReferenceDatum {
   hot_key: PublicKeyHash,
@@ -101,4 +113,5 @@ pub type ReferenceDatum {
   fees: Fees,
   pointer: PolicyId,
   batcher_data: BatcherData,
+  profit_data: ProfitData,
 }

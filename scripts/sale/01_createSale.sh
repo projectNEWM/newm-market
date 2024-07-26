@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
@@ -31,6 +31,8 @@ utxo_value=$(${cli} transaction calculate-min-required-utxo \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/sale/worst-case-sale-datum.json \
     --tx-out="${script_address} + 5000000 + ${worst_case_token}" | tr -dc '0-9')
+
+echo Min UTxO w/o: ${utxo_value}
 
 self_start_fee=$(jq '.fields[4].fields[2].int' ../data/reference/reference-datum.json)
 min_ada=$((${utxo_value} + ${self_start_fee}))

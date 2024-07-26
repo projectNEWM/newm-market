@@ -12,10 +12,11 @@ use assist/payout
 use assist/signing
 use assist/types/hashes.{ValidatorHash}
 use assist/types/token
+use assist/types/wallet.{Wallet}
 use assist/values
 use newm_market/constants
 use newm_market/types/band.{
-  AddToBand, BandLockUpDatum, BandLockUpRedeemer, BurnBand, MintBand, RemoveBand,
+  AddToBand, BandLockUpRedeemer, BurnBand, MintBand, RemoveBand,
 }
 use newm_market/types/reference.{ReferenceDatum}
 
@@ -25,7 +26,7 @@ validator(
   ref_hash: ValidatorHash,
 ) {
   fn params(
-    this_datum: BandLockUpDatum,
+    this_datum: Wallet,
     redeemer: BandLockUpRedeemer,
     context: ScriptContext,
   ) -> Bool {
@@ -79,7 +80,7 @@ validator(
       AddToBand { members } -> {
         let that_value: Value = this_value |> token.add_tokens_to_value(members)
         let this_addr: Address = this_input.output.address
-        expect that_datum: BandLockUpDatum =
+        expect that_datum: Wallet =
           find.output_datum_by_addr(outputs, this_addr)
         and {
           // this_datum cant change
@@ -120,7 +121,7 @@ validator(
             |> dict.keys()
         let token_names: List<AssetName> =
           list.concat(token_names1, token_names2)
-        expect that_datum: BandLockUpDatum =
+        expect that_datum: Wallet =
           find.output_datum_by_addr(outputs, this_addr)
         // check if something is being minted here
         let mint_list: List<(PolicyId, AssetName, Int)> =

@@ -2,7 +2,7 @@
 set -e
 
 tkn() {
-    python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))"
+    python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(56)]))"
 }
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../../data/path_to_socket.sh)
@@ -20,11 +20,35 @@ policy_id1=$(cardano-cli transaction policyid --script-file ${mint_path1})
 policy_id2=$(cardano-cli transaction policyid --script-file ${mint_path2})
 
 # assets
-token_name1=$(python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))")
-token_name2=$(python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))")
+# token_name1=$(python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))")
+# token_name2=$(python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))")
 
-mint_asset1="1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn) + 1 ${policy_id1}.$(tkn)"
-mint_asset2="1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn) + 1 ${policy_id2}.$(tkn)"
+mint_asset1="
+1 ${policy_id1}.44618a67$(tkn) + 
+1 ${policy_id1}.45b555bd$(tkn) + 
+1 ${policy_id1}.4cae2fd2$(tkn) + 
+1 ${policy_id1}.57d8ea10$(tkn) + 
+1 ${policy_id1}.5f3a83b8$(tkn) + 
+1 ${policy_id1}.6aa8bd5d$(tkn) + 
+1 ${policy_id1}.726aaa90$(tkn) + 
+1 ${policy_id1}.8be2ee9c$(tkn) + 
+1 ${policy_id1}.8c4234e8$(tkn) + 
+1 ${policy_id1}.d05fd9e2$(tkn)"
+mint_asset2="
+1 ${policy_id2}.ecf39067$(tkn) + 
+1 ${policy_id2}.0892f565$(tkn) + 
+1 ${policy_id2}.0c55ccd7$(tkn) + 
+1 ${policy_id2}.3d4d9807$(tkn) + 
+1 ${policy_id2}.520fc569$(tkn) + 
+1 ${policy_id2}.5c99b6b4$(tkn) + 
+1 ${policy_id2}.63e2123b$(tkn) + 
+1 ${policy_id2}.78820b6c$(tkn) + 
+1 ${policy_id2}.a16af814$(tkn) + 
+1 ${policy_id2}.ad997a92$(tkn) + 
+1 ${policy_id2}.e7982636$(tkn)"
+
+
+minted_assets=$(echo "${mint_asset1} + ${mint_asset2}" | tr -d '\n')
 
 # mint utxo
 utxo_value=$(${cli} transaction calculate-min-required-utxo \
@@ -69,7 +93,7 @@ FEE=$(${cli} transaction build \
     --tx-out="${batcher_address_out}" \
     --mint-script-file ${mint_path1} \
     --mint-script-file ${mint_path2} \
-    --mint="${mint_asset1} + ${mint_asset2}" \
+    --mint="${minted_assets}" \
     --testnet-magic ${testnet_magic})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
@@ -92,3 +116,6 @@ echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
     --testnet-magic ${testnet_magic} \
     --tx-file ../../tmp/tx.signed
+
+tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+echo "Tx Hash:" $tx

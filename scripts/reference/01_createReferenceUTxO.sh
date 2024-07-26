@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
@@ -15,8 +15,8 @@ script_address=$(${cli} address build --payment-script-file ${script_path} --tes
 # seller info
 starter_address=$(cat ../wallets/starter-wallet/payment.addr)
 
+# this needs to be in the config file or default to the newm wallet
 change_address="addr_test1qrvnxkaylr4upwxfxctpxpcumj0fl6fdujdc72j8sgpraa9l4gu9er4t0w7udjvt2pqngddn6q4h8h3uv38p8p9cq82qav4lmp"
-
 
 # asset to trade
 policy_id=$(jq -r '.starterPid' ../../config.json)

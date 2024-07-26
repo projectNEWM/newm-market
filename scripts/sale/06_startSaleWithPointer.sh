@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
@@ -160,7 +160,11 @@ pointer_execution_unts="(${cpu}, ${mem})"
 pointer_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 pointer_computation_fee_int=$(printf "%.0f" "$pointer_computation_fee")
 
-FEE=$(${cli} transaction calculate-min-fee --tx-body-file ../tmp/tx.draft --testnet-magic ${testnet_magic} --protocol-params-file ../tmp/protocol.json --tx-in-count 1 --tx-out-count 1 --witness-count 2)
+FEE=$(${cli} transaction calculate-min-fee \
+--tx-body-file ../tmp/tx.draft \
+--testnet-magic ${testnet_magic} \
+--protocol-params-file ../tmp/protocol.json \
+--witness-count 3)
 fee=$(echo $FEE | rev | cut -c 9- | rev)
 
 total_fee=$((${fee} + ${sale_computation_fee_int} + ${pointer_computation_fee_int}))

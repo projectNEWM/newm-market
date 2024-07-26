@@ -4,11 +4,6 @@ use aiken/dict
 use aiken/list
 use aiken/transaction/value.{AssetName, Value}
 use assist/types/token.{Tokens}
-use assist/types/wallet.{Wallet}
-
-// We need some data types for the new monster batcher nft pass
-pub type BandLockUpDatum =
-  Wallet
 
 pub type BandLockUpRedeemer {
   RemoveBand
