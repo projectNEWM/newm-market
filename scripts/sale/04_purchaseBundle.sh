@@ -12,26 +12,52 @@ stake_script_path="../../contracts/stake_contract.plutus"
 sale_script_path="../../contracts/sale_contract.plutus"
 sale_script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
 
-# bundle sale contract
+# queue contract
 queue_script_path="../../contracts/queue_contract.plutus"
 queue_script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
 
-# collat, artist, reference
-#
+# vault contract
+vault_script_path="../../contracts/vault_contract.plutus"
+vault_script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+
+# oracle feed
+feed_addr="addr_test1wzn5ee2qaqvly3hx7e0nk3vhm240n5muq3plhjcnvx9ppjgf62u6a"
+feed_pid=$(jq -r ' .feedPid' ../../config.json)
+feed_tkn=$(jq -r '.feedTkn' ../../config.json)
+
+# batcher, artist, buyer, collat
 batcher_address=$(cat ../wallets/batcher-wallet/payment.addr)
 batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
 
 artist_address=$(cat ../wallets/artist-wallet/payment.addr)
 artist_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
 
-#
 which_buyer="buyer1"
 buyer_address=$(cat ../wallets/${which_buyer}-wallet/payment.addr)
 buyer_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${which_buyer}-wallet/payment.vkey)
 
-#
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+
+# payment token
+newm_pid="769c4c6e9bc3ba5406b9b89fb7beb6819e638ff2e2de63f008d5bcff"
+newm_tkn="744e45574d"
+
+# Get all the script and batcher utxos
+echo -e "\033[0;36m\nGathering Vault Script UTxO Information  \033[0m"
+${cli} query utxo \
+    --address ${vault_script_address} \
+    --testnet-magic ${testnet_magic} \
+    --out-file ../tmp/vault_script_utxo.json
+# transaction variables
+TXNS=$(jq length ../tmp/vault_script_utxo.json)
+if [ "${TXNS}" -eq "0" ]; then
+   echo -e "\n \033[0;31m NO UTxOs Found At ${vault_script_address} \033[0m \n";
+   exit;
+fi
+TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .key | . + $alltxin + " --tx-in"' ../tmp/vault_script_utxo.json)
+vault_tx_in=${TXIN::-8}
+echo VAULT UTxO: $vault_tx_in
 
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
 ${cli} query utxo \
@@ -44,17 +70,11 @@ if [ "${TXNS}" -eq "0" ]; then
    echo -e "\n \033[0;31m NO UTxOs Found At ${batcher_address} \033[0m \n";
    exit;
 fi
-
 TXIN=$(jq -r --arg alltxin "" 'to_entries[] | .key | . + $alltxin + " --tx-in"' ../tmp/batcher_utxo.json)
-batcher_starting_lovelace=$(jq '[.[] | .value.lovelace] | add' ../tmp/batcher_utxo.json)
-batcher_starting_incentive=$(jq '[.[] | .value["698a6ea0ca99f315034072af31eaac6ec11fe8558d3f48e9775aab9d"]["7444524950"]] | add // 0' ../tmp/batcher_utxo.json)
 batcher_tx_in=${TXIN::-8}
-echo Batcher UTXO ${batcher_tx_in}
-echo Batcher Lovelace ${batcher_starting_lovelace}
-echo Batcher Incentive ${batcher_starting_incentive} "698a6ea0ca99f315034072af31eaac6ec11fe8558d3f48e9775aab9d.7444524950"
-# exit
+echo Batcher UTXO: ${batcher_tx_in}
 
-echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
+echo -e "\033[0;36m Gathering Queue Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${queue_script_address} \
     --testnet-magic ${testnet_magic} \
@@ -65,14 +85,11 @@ if [ "${TXNS}" -eq "0" ]; then
    echo -e "\n \033[0;31m NO UTxOs Found At ${sale_script_address} \033[0m \n";
    exit;
 fi
-
-TXIN=$(jq -r --arg alltxin "" --arg artistPkh "${buyer_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].fields[0].bytes == $artistPkh) | .key | . + $alltxin + " --tx-in"' ../tmp/queue_script_utxo.json)
+TXIN=$(jq -r --arg alltxin "" --arg buyerPkh "${buyer_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].fields[0].bytes == $buyerPkh) | .key | . + $alltxin + " --tx-in"' ../tmp/queue_script_utxo.json)
 queue_tx_in=${TXIN::-8}
-echo QUEUE UTXO ${queue_tx_in}
+echo QUEUE UTXO: ${queue_tx_in}
 
-# exit
-
-echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
+echo -e "\033[0;36m Gathering Sale Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${sale_script_address} \
     --testnet-magic ${testnet_magic} \
@@ -83,104 +100,24 @@ if [ "${TXNS}" -eq "0" ]; then
    echo -e "\n \033[0;31m NO UTxOs Found At ${sale_script_address} \033[0m \n";
    exit;
 fi
-#
-pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
-tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
-total_amt=100000000
-
-TXIN=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${pid}" --arg tkn "${tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .key' ../tmp/sale_script_utxo.json)
+TXIN=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].fields[0].bytes == $artistPkh) | .key' ../tmp/sale_script_utxo.json)
 sale_tx_in=$TXIN
 echo SALE UTXO ${sale_tx_in}
 
-cp ../tmp/sale_script_utxo.json ../tmp/script_utxo.json
-returning_asset=$(python3 ../py/token_string.py)
-
-
-pointer_pid=$(cat ../../hashes/pointer_policy.hash)
-pointer_tkn=$(cat ../tmp/pointer.token)
-pointer_asset="1 ${pointer_pid}.${pointer_tkn}"
-
-default_asset="${total_amt} ${pid}.${tkn}"
-CURRENT_VALUE=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${pid}" --arg tkn "${tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value[$pid][$tkn]' ../tmp/sale_script_utxo.json)
-echo REMAINING: $CURRENT_VALUE ${pid}.${tkn}
-# exit
-
-# how many bundles to purchase
-bundleSize=$(jq -r '.fields[1].int' ../data/queue/queue-datum.json)
-
-# the bundle size
-bSize=$(jq -r '.fields[1].fields[2].int' ../data/sale/sale-datum.json)
-
-# the cost size
-pSize=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
-
-payAmt=$((${bundleSize} * ${pSize}))
-
-buyAmt=$((${bundleSize} * ${bSize}))
-retAmt=$((${CURRENT_VALUE} - ${buyAmt}))
-
-if [[ CURRENT_VALUE -lt buyAmt ]] ; then
-    echo "Partial Fill"
-    retAmt=${CURRENT_VALUE}
+echo -e "\033[0;36m Gathering Oracle Script UTxO Information  \033[0m"
+${cli} query utxo \
+    --address ${feed_addr} \
+    --testnet-magic ${testnet_magic} \
+    --out-file ../tmp/feed_utxo.json
+TXNS=$(jq length ../tmp/feed_utxo.json)
+if [ "${TXNS}" -eq "0" ]; then
+   echo -e "\n \033[0;31m NO UTxOs Found At ${feed_addr} \033[0m \n";
+   exit;
 fi
-
-# buyer info
-bundle_value="${buyAmt} ${pid}.${tkn}"
-returning_asset="${retAmt} ${pid}.${tkn}"
-
-echo Buyer Bundle: $bundle_value
-echo Sale Return: $returning_asset
-
-# exit
-
-cpid=$(jq -r '.fields[2].fields[0].bytes' ../data/sale/sale-datum.json)
-ctkn=$(jq -r '.fields[2].fields[1].bytes' ../data/sale/sale-datum.json)
-
-sale_profit_amount=$(jq --arg cpid "$cpid" --arg ctkn "$ctkn" '[.[] | .value[$cpid][$ctkn]] | add' ../tmp/sale_script_utxo.json)
-queue_payment_amount=$(jq --arg cpid "$cpid" --arg ctkn "$ctkn" '[.[] | .value[$cpid][$ctkn]] | add' ../tmp/queue_script_utxo.json)
-if [ -z "$sale_profit_amount" ]; then
-    profit="$((${queue_payment_amount})) ${cpid}.${ctkn}"
-else
-    profit="$((${sale_profit_amount} + ${queue_payment_amount})) ${cpid}.${ctkn}"
-fi
-echo Current Profit: $profit
-
-# exit
-
-echo Batcher Incentive: $batcher_starting_incentive
-incentive="$((1000000 + ${batcher_starting_incentive})) 698a6ea0ca99f315034072af31eaac6ec11fe8558d3f48e9775aab9d.7444524950"
-return_incentive="1000000 698a6ea0ca99f315034072af31eaac6ec11fe8558d3f48e9775aab9d.7444524950"
-token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
-batcher_policy_id=$(cat ../../hashes/batcher.hash)
-batcher_token="1 ${batcher_policy_id}.${token_name}"
-batcher_address_out="${batcher_address} + ${batcher_starting_lovelace} + ${incentive} + ${batcher_token}"
-
-
-
-# queue contract return
-# the cost value is ada
-queue_utxo_value=$(jq -r '.[].value.lovelace' ../tmp/queue_script_utxo.json)
-sale_utxo_value=$(jq -r '.[].value.lovelace' ../tmp/sale_script_utxo.json)
-queue_ada_return=$((${queue_utxo_value}))
-sale_ada_return=$((${sale_utxo_value}))
-
-if [[ retAmt -le 0 ]] ; then
-        # echo "THIS CLEANS THE SALE OUT"
-        sale_script_address_out="${sale_script_address} + ${sale_ada_return} + ${pointer_asset} + ${profit}"
-        queue_script_address_out="${queue_script_address} + ${queue_ada_return} + ${bundle_value} + ${return_incentive}"
-        # echo $sale_script_address_out
-        # exit
-    else
-        sale_script_address_out="${sale_script_address} + ${sale_ada_return} + ${returning_asset} + ${pointer_asset} + ${profit}"
-        queue_script_address_out="${queue_script_address} + ${queue_ada_return} + ${bundle_value} + ${return_incentive}"
-    fi
-
-echo -e "\nBatcher OUTPUT: "${batcher_address_out}
-echo -e "\nSale Script OUTPUT: "${sale_script_address_out}
-echo -e "\nQueue Script OUTPUT: "${queue_script_address_out}
-#
-# exit
-#
+alltxin=""
+TXIN=$(jq -r --arg alltxin "" --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .key | . + $alltxin + " --tx-in"' ../tmp/feed_utxo.json)
+feed_tx_in=${TXIN::-8}
+echo Feed UTxO: $feed_tx_in
 
 # collat info
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
@@ -194,9 +131,130 @@ if [ "${TXNS}" -eq "0" ]; then
    exit;
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
+echo Collateral UTxO: $collat_utxo
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
+# exit
+
+#
+# Get the batcher stuff going
+#
+echo -e "\033[0;37m\nGenerating Batcher Output\033[0m"
+batcher_starting_lovelace=$(jq '[.[] | .value.lovelace] | add' ../tmp/batcher_utxo.json)
+batcher_starting_incentive=$(jq --arg newm_pid ${newm_pid} --arg newm_tkn ${newm_tkn} '[.[] | .value[$newm_pid][$newm_tkn]] | add // 0' ../tmp/batcher_utxo.json)
+echo Batcher Starting Value: ${batcher_starting_incentive} ${newm_pid}.${newm_tkn}
+
+# the queue utxo has 2 incentive units
+incentive_amt=$(jq -r '.fields[2].fields[2].int' ../data/queue/queue-datum.json)
+incentive="$((${incentive_amt} + ${batcher_starting_incentive})) ${newm_pid}.${newm_tkn}"
+return_incentive_value="${incentive_amt} ${newm_pid}.${newm_tkn}"
+
+# the batcher cert
+token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
+batcher_policy_id=$(cat ../../hashes/batcher.hash)
+batcher_token="1 ${batcher_policy_id}.${token_name}"
+batcher_address_out="${batcher_address} + ${batcher_starting_lovelace} + ${incentive} + ${batcher_token}"
+echo "Batcher OUTPUT:" ${batcher_address_out}
+
+# exit
+
+#
+# Get the vault stuff going
+#
+echo -e "\033[0;37m\nGenerating Vault Output\033[0m"
+vault_starting_lovelace=$(jq '[.[] | .value.lovelace] | add' ../tmp/vault_script_utxo.json)
+vault_starting_profit=$(jq --arg newm_pid ${newm_pid} --arg newm_tkn ${newm_tkn} '[.[] | .value[$newm_pid][$newm_tkn]] | add // 0' ../tmp/vault_script_utxo.json)
+echo Vault Starting Value: ${vault_starting_profit} ${newm_pid}.${newm_tkn}
+feed_datum=$(jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .value.inlineDatum' ../tmp/feed_utxo.json)
+current_price=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[0].v.int')
+echo Current NEWM/USD Price: $current_price
+margin=$(jq '.fields[7].fields[5].int' ../data/reference/reference-datum.json)
+profit_pid=$(jq -r '.fields[7].fields[3].bytes' ../data/reference/reference-datum.json)
+profit_tkn=$(jq -r '.fields[7].fields[4].bytes' ../data/reference/reference-datum.json)
+profit_amt=$(python -c "p = ${margin} // ${current_price};print(p)")
+echo Profit Amt: ${profit_amt}
+start_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[1].v.int')
+end_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[2].v.int')
+# subtract a second from it so its forced to be contained
+timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${start_time} / 1000 + 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+start_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
+timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${end_time} / 1000 - 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
+echo Oracle Start: $start_slot
+echo Oralce End: $end_slot
+profit="$((${profit_amt} + ${vault_starting_profit})) ${profit_pid}.${profit_tkn}"
+variable=${profit_amt}; jq -r --argjson variable "$variable" '.fields[0].list[0].fields[2].int=$variable' ../data/vault/add-to-vault-redeemer.json | sponge ../data/vault/add-to-vault-redeemer.json
+vault_address_out="${vault_script_address} + ${vault_starting_lovelace} + ${profit}"
+echo "Vault OUTPUT:" ${vault_address_out}
+
+# exit
+
+#
+# Get the sale stuff going
+#
+echo -e "\033[0;37m\nGenerating Sale Output\033[0m"
+# the token being sold
+sale_pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
+sale_tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
+# the cost token
+cost_pid=$(jq -r '.fields[2].fields[0].bytes' ../data/sale/sale-datum.json)
+cost_tkn=$(jq -r '.fields[2].fields[1].bytes' ../data/sale/sale-datum.json)
+# the pointer token for the sale
+pointer_pid=$(cat ../../hashes/pointer_policy.hash)
+pointer_tkn=$(cat ../tmp/pointer.token)
+pointer_value="1 ${pointer_pid}.${pointer_tkn}"
+#
+sale_amt=$(jq -r --arg pid "${sale_pid}" --arg tkn "${sale_tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value[$pid][$tkn]' ../tmp/sale_script_utxo.json)
+echo Sale Starting Value: $sale_amt ${sale_pid}.${sale_tkn}
+
+wantedNumberOfBundles=$(jq -r '.fields[1].int' ../data/queue/queue-datum.json)
+saleBundleAmt=$(jq -r '.fields[1].fields[2].int' ../data/sale/sale-datum.json)
+saleCostAmt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
+
+totalCostAmt=$((${wantedNumberOfBundles} * ${saleCostAmt}))
+totalBundleAmt=$((${wantedNumberOfBundles} * ${saleBundleAmt}))
+returnBundleAmt=$((${sale_amt} - ${totalBundleAmt}))
+
+# buyer info
+queue_bundle_value="${totalBundleAmt} ${sale_pid}.${sale_tkn}"
+sale_bundle_value="${returnBundleAmt} ${sale_pid}.${sale_tkn}"
+
+echo Queue Bundle: $queue_bundle_value
+echo Sale Bundle: $sale_bundle_value
+
+sale_profit_amount=$(jq --arg cpid "$cost_pid" --arg ctkn "$cost_tkn" '[.[] | .value[$cpid][$ctkn]] | add' ../tmp/sale_script_utxo.json)
+queue_payment_amount=$(jq --arg cpid "$cost_pid" --arg ctkn "$cost_tkn" '[.[] | .value[$cpid][$ctkn]] | add' ../tmp/queue_script_utxo.json)
+
+queue_return_payment_amount=$(($queue_payment_amount - $totalCostAmt - $incentive_amt - $profit_amt))
+queue_return_payment_value="${queue_return_payment_amount} ${cost_pid}.${cost_tkn}"
+
+if [ -z "$sale_profit_amount" ]; then
+    sale_cost_value="${totalCostAmt} ${cost_pid}.${cost_tkn}"
+else
+    sale_cost_value="$((${sale_profit_amount} + ${totalCostAmt})) ${cost_pid}.${cost_tkn}"
+fi
+
+echo Sale Cost Value: $sale_cost_value
+echo Queue Return Payment Value: $queue_return_payment_value
+
+queue_ada_return=$(jq -r '.[].value.lovelace' ../tmp/queue_script_utxo.json)
+sale_ada_return=$(jq -r '.[].value.lovelace' ../tmp/sale_script_utxo.json)
+
+
+if [[ $returnBundleAmt -le 0 ]] ; then
+    sale_address_out="${sale_script_address} + ${sale_ada_return} + ${pointer_value} + ${sale_cost_value}"
+else
+    sale_address_out="${sale_script_address} + ${sale_ada_return} + ${sale_bundle_value} + ${pointer_value} + ${sale_cost_value}"
+fi
+queue_address_out="${queue_script_address} + ${queue_ada_return} + ${queue_bundle_value} + ${queue_return_payment_value}"
+
+echo "Sale OUTPUT:" ${sale_address_out}
+echo "Queue OUTPUT:" ${queue_address_out}
+
+# exit
+
+sale_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
 queue_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/queue-reference-utxo.signed )
+vault_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/vault-reference-utxo.signed )
 data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 
@@ -207,11 +265,14 @@ ${cli} transaction build-raw \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --out-file ../tmp/tx.draft \
+    --invalid-before ${start_slot} \
+    --invalid-hereafter ${end_slot} \
     --tx-in-collateral="${collat_utxo}" \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
+    --read-only-tx-in-reference ${feed_tx_in} \
     --tx-in ${batcher_tx_in} \
     --tx-in ${sale_tx_in} \
-    --spending-tx-in-reference="${script_ref_utxo}#1" \
+    --spending-tx-in-reference="${sale_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${execution_unts}" \
@@ -222,53 +283,113 @@ ${cli} transaction build-raw \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${execution_unts}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
+    --tx-in ${vault_tx_in} \
+    --spending-tx-in-reference="${vault_ref_utxo}#1" \
+    --spending-plutus-script-v2 \
+    --spending-reference-tx-in-inline-datum-present \
+    --spending-reference-tx-in-execution-units="${execution_unts}" \
+    --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
     --tx-out="${batcher_address_out}" \
-    --tx-out="${sale_script_address_out}" \
+    --tx-out="${vault_address_out}" \
+    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
+    --tx-out="${sale_address_out}" \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json  \
-    --tx-out="${queue_script_address_out}" \
+    --tx-out="${queue_address_out}" \
     --tx-out-inline-datum-file ../data/queue/queue-datum.json  \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
     --fee 0
 
-python3 -c "import sys, json; sys.path.append('../py/'); from tx_simulation import from_file; exe_units=from_file('../tmp/tx.draft', False);print(json.dumps(exe_units))" > ../data/exe_units.json
+python3 -c "import sys, json; sys.path.append('../py/'); from tx_simulation import from_file; exe_units=from_file('../tmp/tx.draft', False, debug=False);print(json.dumps(exe_units))" > ../data/exe_units.json
 
 cat ../data/exe_units.json
-# exit
-cpu=$(jq -r '.[1].cpu' ../data/exe_units.json)
-mem=$(jq -r '.[1].mem' ../data/exe_units.json)
+if [ "$(cat ../data/exe_units.json)" = '[{}]' ]; then
+    echo "Validation Failed."
+    exit 1
+else
+    echo "Validation Success."
+fi
+
+sale_index=$(python3 -c "
+import sys; sys.path.append('../py/'); 
+from lexico import sort_lexicographically, get_index_in_order;
+ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vault_tx_in}');
+index = get_index_in_order(ordered_list, '${sale_tx_in}');
+print(index)"
+)
+# echo $sale_index
+
+cpu=$(jq -r --argjson index "$sale_index" '.[$index].cpu' ../data/exe_units.json)
+mem=$(jq -r --argjson index "$sale_index" '.[$index].mem' ../data/exe_units.json)
 
 sale_execution_unts="(${cpu}, ${mem})"
 sale_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 sale_computation_fee_int=$(printf "%.0f" "$sale_computation_fee")
+# echo $sale_execution_unts
 
-cpu=$(jq -r '.[0].cpu' ../data/exe_units.json)
-mem=$(jq -r '.[0].mem' ../data/exe_units.json)
+queue_index=$(python3 -c "
+import sys; sys.path.append('../py/'); 
+from lexico import sort_lexicographically, get_index_in_order;
+ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vault_tx_in}');
+index = get_index_in_order(ordered_list, '${queue_tx_in}');
+print(index)"
+)
+# echo $queue_index
+
+
+cpu=$(jq -r --argjson index "$queue_index" '.[$index].cpu' ../data/exe_units.json)
+mem=$(jq -r --argjson index "$queue_index" '.[$index].mem' ../data/exe_units.json)
 
 queue_execution_unts="(${cpu}, ${mem})"
 queue_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 queue_computation_fee_int=$(printf "%.0f" "$queue_computation_fee")
-#
+# echo $queue_execution_unts
+
+vault_index=$(python3 -c "
+import sys; sys.path.append('../py/'); 
+from lexico import sort_lexicographically, get_index_in_order;
+ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vault_tx_in}');
+index = get_index_in_order(ordered_list, '${vault_tx_in}');
+print(index)"
+)
+# echo $vault_index
+
+cpu=$(jq -r --argjson index "$vault_index" '.[$index].cpu' ../data/exe_units.json)
+mem=$(jq -r --argjson index "$vault_index" '.[$index].mem' ../data/exe_units.json)
+
+vault_execution_unts="(${cpu}, ${mem})"
+vault_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
+vault_computation_fee_int=$(printf "%.0f" "$vault_computation_fee")
+# echo $vault_execution_unts
+
 # exit
-#
-FEE=$(${cli} transaction calculate-min-fee --tx-body-file ../tmp/tx.draft --testnet-magic ${testnet_magic} --protocol-params-file ../tmp/protocol.json --tx-in-count 3 --tx-out-count 3 --witness-count 2)
+
+FEE=$(${cli} transaction calculate-min-fee \
+    --tx-body-file ../tmp/tx.draft \
+    --protocol-params-file ../tmp/protocol.json \
+    --witness-count 3)
 fee=$(echo $FEE | rev | cut -c 9- | rev)
 
-total_fee=$((${fee} + ${sale_computation_fee_int} + ${queue_computation_fee_int}))
+total_fee=$((${fee} + ${sale_computation_fee_int} + ${queue_computation_fee_int} + ${vault_computation_fee_int}))
 echo Tx Fee: $total_fee
 change_value=$((${queue_ada_return} - ${total_fee}))
-queue_script_address_out="${queue_script_address} + ${change_value} + ${bundle_value}  + ${return_incentive}"
-echo "Without Fee: Queue Script OUTPUT: "${queue_script_address_out}
+queue_address_out="${queue_script_address} + ${change_value} + ${queue_bundle_value} + ${queue_return_payment_value}"
+echo "With Fee: Queue Script OUTPUT: "${queue_address_out}
+
+# exit
 
 ${cli} transaction build-raw \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --out-file ../tmp/tx.draft \
+    --invalid-before ${start_slot} \
+    --invalid-hereafter ${end_slot} \
     --tx-in-collateral="${collat_utxo}" \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
+    --read-only-tx-in-reference ${feed_tx_in} \
     --tx-in ${batcher_tx_in} \
     --tx-in ${sale_tx_in} \
-    --spending-tx-in-reference="${script_ref_utxo}#1" \
+    --spending-tx-in-reference="${sale_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${sale_execution_unts}" \
@@ -279,10 +400,18 @@ ${cli} transaction build-raw \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${queue_execution_unts}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
+    --tx-in ${vault_tx_in} \
+    --spending-tx-in-reference="${vault_ref_utxo}#1" \
+    --spending-plutus-script-v2 \
+    --spending-reference-tx-in-inline-datum-present \
+    --spending-reference-tx-in-execution-units="${vault_execution_unts}" \
+    --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
     --tx-out="${batcher_address_out}" \
-    --tx-out="${sale_script_address_out}" \
+    --tx-out="${vault_address_out}" \
+    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
+    --tx-out="${sale_address_out}" \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json  \
-    --tx-out="${queue_script_address_out}" \
+    --tx-out="${queue_address_out}" \
     --tx-out-inline-datum-file ../data/queue/queue-datum.json  \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
