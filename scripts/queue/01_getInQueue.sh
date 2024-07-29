@@ -59,7 +59,8 @@ echo Cost: ${pay_amt}
 # hardcode for now
 incentive="2000000 769c4c6e9bc3ba5406b9b89fb7beb6819e638ff2e2de63f008d5bcff.744e45574d"
 
-feed_addr="addr_test1wzn5ee2qaqvly3hx7e0nk3vhm240n5muq3plhjcnvx9ppjgf62u6a"
+feed_pkh=$(jq -r ' .feedHash' ../../config.json)
+feed_addr=$(../bech32 addr_test <<< 70${feed_pkh})
 feed_pid=$(jq -r ' .feedPid' ../../config.json)
 feed_tkn=$(jq -r '.feedTkn' ../../config.json)
 
