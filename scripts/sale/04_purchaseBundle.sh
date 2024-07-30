@@ -184,6 +184,8 @@ timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp
 end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
+ttl=$(python -c "import time; import sys; print(int(${end_time} / 1000) - int(time.time()))")
+echo Seconds Left for validity ${ttl}
 profit="$((${profit_amt} + ${vault_starting_profit})) ${profit_pid}.${profit_tkn}"
 variable=${profit_amt}; jq -r --argjson variable "$variable" '.fields[0].list[0].fields[2].int=$variable' ../data/vault/add-to-vault-redeemer.json | sponge ../data/vault/add-to-vault-redeemer.json
 vault_address_out="${vault_script_address} + ${vault_starting_lovelace} + ${profit}"

@@ -55,7 +55,6 @@ cost_amt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
 pay_amt=$((${bundleSize} * ${cost_amt}))
 
 cost="${pay_amt} ${cost_pid}.${cost_tkn}"
-echo Cost: ${pay_amt}
 # hardcode for now
 incentive="2000000 769c4c6e9bc3ba5406b9b89fb7beb6819e638ff2e2de63f008d5bcff.744e45574d"
 
@@ -88,7 +87,9 @@ profit_tkn=$(jq -r '.fields[7].fields[4].bytes' ../data/reference/reference-datu
 
 # This must be true: e < N*C + P
 profit_amt=$(python -c "p = ${margin} // ${current_price};print(p)")
-extra_amt=$(python -c "nc = ${pay_amt};p = ${profit_amt};e = (nc + p)//4; print(e)")
+extra_pct=40 # 100 / 40 = 2.5% change
+extra_amt=$(python -c "nc = ${pay_amt};p = ${profit_amt};e = (nc + p)//${extra_pct}; print(e)")
+echo Cost: ${pay_amt}
 echo Profit Amt: ${profit_amt}
 echo Extra Amt: ${extra_amt}
 profit="${profit_amt} ${profit_pid}.${profit_tkn}"

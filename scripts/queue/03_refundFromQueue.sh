@@ -59,7 +59,10 @@ timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp
 end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
+ttl=$(python -c "import time; import sys; print(int(${end_time} / 1000) - int(time.time()))")
+echo Seconds Left for validity ${ttl}
 
+# exit
 
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
 ${cli} query utxo \
