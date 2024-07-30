@@ -21,7 +21,10 @@ vault_script_path="../../contracts/vault_contract.plutus"
 vault_script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
 
 # oracle feed
-feed_addr="addr_test1wzn5ee2qaqvly3hx7e0nk3vhm240n5muq3plhjcnvx9ppjgf62u6a"
+# this needs to be better
+feed_pkh=$(jq -r ' .feedHash' ../../config.json)
+feed_addr=$(../bech32 addr_test <<< 70${feed_pkh})
+
 feed_pid=$(jq -r ' .feedPid' ../../config.json)
 feed_tkn=$(jq -r '.feedTkn' ../../config.json)
 
@@ -181,6 +184,8 @@ timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp
 end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
+ttl=$(python -c "import time; import sys; print(int(${end_time} / 1000) - int(time.time()))")
+echo Seconds Left for validity ${ttl}
 profit="$((${profit_amt} + ${vault_starting_profit})) ${profit_pid}.${profit_tkn}"
 variable=${profit_amt}; jq -r --argjson variable "$variable" '.fields[0].list[0].fields[2].int=$variable' ../data/vault/add-to-vault-redeemer.json | sponge ../data/vault/add-to-vault-redeemer.json
 vault_address_out="${vault_script_address} + ${vault_starting_lovelace} + ${profit}"

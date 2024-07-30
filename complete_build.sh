@@ -149,6 +149,10 @@ hotKey=$(jq -r '.hotKey' config.json)
 
 cp ./scripts/data/reference/reference-datum.json ./scripts/data/reference/backup-reference-datum.json
 
+feed_pkh=$(jq -r ' .feedHash' config.json)
+feed_pid=$(jq -r ' .feedPid' config.json)
+feed_tkn=$(jq -r '.feedTkn' config.json)
+
 # update reference data
 jq \
 --arg hotKey "$hotKey" \
@@ -168,6 +172,9 @@ jq \
 --argjson ssb "$ssb" \
 --arg pointerHash "$pointerHash" \
 --arg batcherHash "$batcherHash" \
+--arg feed_pkh "$feed_pkh" \
+--arg feed_pid "$feed_pid" \
+--arg feed_tkn "$feed_tkn" \
 '.fields[0].bytes=$hotKey | 
 .fields[1].fields[0].list |= ($pkhs | .[0:length]) | 
 .fields[1].fields[1].int=$thres | 
@@ -183,7 +190,10 @@ jq \
 .fields[4].fields[1].int=$rqb |
 .fields[4].fields[2].int=$ssb |
 .fields[5].bytes=$pointerHash |
-.fields[6].fields[3].bytes=$batcherHash
+.fields[6].fields[3].bytes=$batcherHash |
+.fields[7].fields[0].bytes=$feed_pkh |
+.fields[7].fields[1].bytes=$feed_pid |
+.fields[7].fields[2].bytes=$feed_tkn
 ' \
 ./scripts/data/reference/reference-datum.json | sponge ./scripts/data/reference/reference-datum.json
 

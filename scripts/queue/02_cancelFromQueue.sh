@@ -33,12 +33,7 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 TXIN=$(jq -r --arg alltxin "" --arg buyerPkh "${buyer_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].fields[0].bytes == $buyerPkh) | .key | . + $alltxin + " --tx-in"' ../tmp/script_utxo.json)
 script_tx_in=${TXIN::-8}
-# script_lovelace=$(jq -r --arg buyerPkh "${buyer_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].fields[0].bytes == $buyerPkh) | .value.value.lovelace' ../tmp/script_utxo.json)
 
-# returning_asset=$(python3 ../py/token_string.py)
-
-# buyer_address_out="${buyer_address} + ${script_lovelace} + ${returning_asset}"
-# echo "Return OUTPUT: "${buyer_address_out}
 #
 # exit
 #

@@ -26,7 +26,8 @@ collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 # oracle feed
-feed_addr="addr_test1wzn5ee2qaqvly3hx7e0nk3vhm240n5muq3plhjcnvx9ppjgf62u6a"
+feed_pkh=$(jq -r ' .feedHash' ../../config.json)
+feed_addr=$(../bech32 addr_test <<< 70${feed_pkh})
 feed_pid=$(jq -r ' .feedPid' ../../config.json)
 feed_tkn=$(jq -r '.feedTkn' ../../config.json)
 
@@ -58,7 +59,10 @@ timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp
 end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
+ttl=$(python -c "import time; import sys; print(int(${end_time} / 1000) - int(time.time()))")
+echo Seconds Left for validity ${ttl}
 
+# exit
 
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
 ${cli} query utxo \
