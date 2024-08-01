@@ -49,7 +49,7 @@ print(assets)
 ")
 
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
-batcher_token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
+batcher_token_name="affab1e0005e77ab1e"
 complete_token_name="c011ec7ed000a55e75"
 
 complete_token="1 ${batcher_policy_id}.${complete_token_name}"

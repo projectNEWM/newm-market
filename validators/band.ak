@@ -1,3 +1,4 @@
+use aiken/bytearray
 use aiken/dict
 use aiken/list
 use aiken/transaction.{Input, ScriptContext, Spend, Transaction}
@@ -10,7 +11,7 @@ use assist/find
 use assist/minting
 use assist/payout
 use assist/signing
-use assist/types/hashes.{ValidatorHash}
+use assist/types/hashes.{TxHash, ValidatorHash}
 use assist/types/token
 use assist/types/wallet.{Wallet}
 use assist/values
@@ -136,6 +137,25 @@ validator(
                 constants.complete_set_token_name,
                 1,
               )
+        // get first utxo info
+        let first_index: Int = find.first_input_index(inputs)
+        let first_tx_hash: TxHash = find.first_input_txid(inputs)
+        // The prefixes are the same length here
+        let batcher_token_name: AssetName =
+          values.unique_token_name(
+            first_tx_hash,
+            first_index,
+            constants.batcher_token_name,
+          )
+        let complete_set_token_name: AssetName =
+          values.unique_token_name(
+            first_tx_hash,
+            first_index,
+            constants.complete_set_token_name,
+          )
+        //
+        //
+        //
         and {
           // datums cant change
           (this_datum == that_datum)?,
@@ -156,14 +176,14 @@ validator(
           minting.exact(
             mint_list,
             ref_datum.batcher_data.batcher_pid,
-            constants.batcher_token_name,
+            batcher_token_name,
             1,
           )?,
           // mint exactly 1 complete set token
           minting.exact(
             mint_list,
             ref_datum.batcher_data.batcher_pid,
-            constants.complete_set_token_name,
+            complete_set_token_name,
             1,
           )?,
           // data reference must be holding correct token
@@ -175,7 +195,7 @@ validator(
         }
       }
       // burn nft and unlock full band back to owner
-      BurnBand -> {
+      BurnBand(tkn_ending) -> {
         // check if something is being minted here
         let mint_list: List<(PolicyId, AssetName, Int)> =
           mint
@@ -190,21 +210,21 @@ validator(
           minting.exact(
             mint_list,
             ref_datum.batcher_data.batcher_pid,
-            constants.batcher_token_name,
+            bytearray.concat(constants.batcher_token_name, tkn_ending),
             -1,
           )?,
           // mint exactly 1 complete set token
           minting.exact(
             mint_list,
             ref_datum.batcher_data.batcher_pid,
-            constants.complete_set_token_name,
+            bytearray.concat(constants.complete_set_token_name, tkn_ending),
             -1,
           )?,
           // anything but a complete set can be removed
           values.prove_exact_nft(
             this_value,
             ref_datum.batcher_data.batcher_pid,
-            constants.complete_set_token_name,
+            bytearray.concat(constants.complete_set_token_name, tkn_ending),
           )?,
           // data reference must be holding correct token
           values.prove_exact_nft(

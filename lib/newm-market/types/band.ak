@@ -9,7 +9,7 @@ pub type BandLockUpRedeemer {
   RemoveBand
   AddToBand { members: Tokens }
   MintBand
-  BurnBand
+  BurnBand(ByteArray)
 }
 
 /// Token names are from the value or total value. Monster token names are the

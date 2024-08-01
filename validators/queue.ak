@@ -234,7 +234,6 @@ validator(
           // it can't be this output reference or the sale output reference
           queue.prove_existence_of_batcher(
             ref_datum.batcher_data.batcher_pid,
-            constants.batcher_token_name,
             inputs,
             output_reference,
             sale_out_ref,
@@ -377,7 +376,6 @@ validator(
           // tx must be spending the certificate of batcher authenticity
           queue.prove_existence_of_batcher(
             ref_datum.batcher_data.batcher_pid,
-            constants.batcher_token_name,
             inputs,
             output_reference,
             sale_out_ref,

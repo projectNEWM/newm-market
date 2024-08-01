@@ -87,7 +87,7 @@ echo Batcher Starting Value: ${batcher_starting_incentive} ${newm_pid}.${newm_tk
 incentive_amt=$(jq -r '.fields[2].fields[2].int' ../data/queue/queue-datum.json)
 incentive="$((${incentive_amt} + ${batcher_starting_incentive})) ${newm_pid}.${newm_tkn}"
 
-token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
+token_name="affab1e0005e77ab1e"
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
 batcher_token="1 ${batcher_policy_id}.${token_name}"
 batcher_address_out="${batcher_address} + ${batcher_starting_lovelace} + ${incentive} + ${batcher_token}"
