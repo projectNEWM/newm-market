@@ -322,7 +322,7 @@ ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vaul
 index = get_index_in_order(ordered_list, '${sale_tx_in}');
 print(index)"
 )
-# echo $sale_index
+echo $sale_index
 
 cpu=$(jq -r --argjson index "$sale_index" '.[$index].cpu' ../data/exe_units.json)
 mem=$(jq -r --argjson index "$sale_index" '.[$index].mem' ../data/exe_units.json)
@@ -330,7 +330,7 @@ mem=$(jq -r --argjson index "$sale_index" '.[$index].mem' ../data/exe_units.json
 sale_execution_unts="(${cpu}, ${mem})"
 sale_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 sale_computation_fee_int=$(printf "%.0f" "$sale_computation_fee")
-# echo $sale_execution_unts
+echo $sale_execution_unts
 
 queue_index=$(python3 -c "
 import sys; sys.path.append('../py/'); 
@@ -339,7 +339,7 @@ ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vaul
 index = get_index_in_order(ordered_list, '${queue_tx_in}');
 print(index)"
 )
-# echo $queue_index
+echo $queue_index
 
 
 cpu=$(jq -r --argjson index "$queue_index" '.[$index].cpu' ../data/exe_units.json)
@@ -348,7 +348,7 @@ mem=$(jq -r --argjson index "$queue_index" '.[$index].mem' ../data/exe_units.jso
 queue_execution_unts="(${cpu}, ${mem})"
 queue_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 queue_computation_fee_int=$(printf "%.0f" "$queue_computation_fee")
-# echo $queue_execution_unts
+echo $queue_execution_unts
 
 vault_index=$(python3 -c "
 import sys; sys.path.append('../py/'); 
@@ -357,7 +357,7 @@ ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vaul
 index = get_index_in_order(ordered_list, '${vault_tx_in}');
 print(index)"
 )
-# echo $vault_index
+echo $vault_index
 
 cpu=$(jq -r --argjson index "$vault_index" '.[$index].cpu' ../data/exe_units.json)
 mem=$(jq -r --argjson index "$vault_index" '.[$index].mem' ../data/exe_units.json)
@@ -365,7 +365,7 @@ mem=$(jq -r --argjson index "$vault_index" '.[$index].mem' ../data/exe_units.jso
 vault_execution_unts="(${cpu}, ${mem})"
 vault_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 vault_computation_fee_int=$(printf "%.0f" "$vault_computation_fee")
-# echo $vault_execution_unts
+echo $vault_execution_unts
 
 # exit
 
@@ -374,14 +374,14 @@ FEE=$(${cli} transaction calculate-min-fee \
     --protocol-params-file ../tmp/protocol.json \
     --witness-count 3)
 fee=$(echo $FEE | rev | cut -c 9- | rev)
-
+echo Tx Fee: $fee
 total_fee=$((${fee} + ${sale_computation_fee_int} + ${queue_computation_fee_int} + ${vault_computation_fee_int}))
-echo Tx Fee: $total_fee
+echo Total Fee: $total_fee
 change_value=$((${queue_ada_return} - ${total_fee}))
 queue_address_out="${queue_script_address} + ${change_value} + ${queue_bundle_value} + ${queue_return_payment_value}"
 echo "With Fee: Queue Script OUTPUT: "${queue_address_out}
 
-# exit
+exit
 
 ${cli} transaction build-raw \
     --babbage-era \

@@ -41,7 +41,7 @@ echo Script UTxO: $script_tx_in
 
 lovelace=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(.value.inlineDatum.fields[0].bytes == $pkh) | .value.value.lovelace' ../tmp/script_utxo.json)
 
-min_utxo=$((${lovelace} - 12345678))
+min_utxo=10000000
 
 script_address_out="${script_address} + ${min_utxo}"
 echo Output: $script_address_out
