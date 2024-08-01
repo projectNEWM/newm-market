@@ -13,7 +13,6 @@ use assist/types/moment.{Moment}
 use assist/types/token.{Token}
 use assist/types/wallet.{Wallet}
 use assist/values
-use newm_market/constants
 use newm_market/types/oracle.{OracleDatum}
 use newm_market/types/queue.{
   QueueCancel, QueueDatum, QueuePurchase, QueueRedeemer, QueueRefund,
