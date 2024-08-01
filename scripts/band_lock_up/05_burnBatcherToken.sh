@@ -38,10 +38,11 @@ echo Script UTxO: $script_tx_in
 
 # this assumes no entry tokens
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
-batcher_token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
-complete_token_name="c011ec7ed000a55e75"
+token_ending=$(cat ../tmp/batcher.token)
+variable=${token_ending}; jq --arg variable "$variable" '.fields[0].bytes=$variable' ../data/band_lock/burn-band-redeemer.json | sponge ../data/band_lock/burn-band-redeemer.json
+batcher_token_name="affab1e0005e77ab1e"${token_ending}
+complete_token_name="c011ec7ed000a55e75"${token_ending}
 
-token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
 batcher_token="-1 ${batcher_policy_id}.${batcher_token_name} + -1 ${batcher_policy_id}.${complete_token_name}"
 #

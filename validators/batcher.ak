@@ -52,7 +52,7 @@ validator(ref_hash: ValidatorHash) {
         let is_correct_redeemer =
           when that_redeemer is {
             // must burn the batcher and complete set tokens
-            BurnBand -> True
+            BurnBand(_) -> True
             _ -> fail @"Must Use BurnBand Redeemer"
           }
         // check that something is being spent from the band lock

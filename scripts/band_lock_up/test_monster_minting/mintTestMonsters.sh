@@ -117,5 +117,5 @@ ${cli} transaction submit \
     --testnet-magic ${testnet_magic} \
     --tx-file ../../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(cardano-cli transaction txid --tx-file ../../tmp/tx.signed)
 echo "Tx Hash:" $tx

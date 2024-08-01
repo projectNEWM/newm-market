@@ -1,7 +1,11 @@
+use aiken/bytearray
+use aiken/dict
+use aiken/list
 use aiken/transaction.{Input, OutputReference}
 use aiken/transaction/value.{AssetName, PolicyId, Value}
 use assist/types/token.{Token}
 use assist/types/wallet.{Wallet}
+use newm_market/constants.{batcher_token_name, batcher_token_name_length}
 
 // the queue datum
 pub type QueueDatum {
@@ -25,7 +29,6 @@ pub fn prove_existence_of_incentive(
 
 pub fn prove_existence_of_batcher(
   pid: PolicyId,
-  tkn: AssetName,
   inputs: List<Input>,
   queue_out_ref: OutputReference,
   sale_out_ref: OutputReference,
@@ -36,11 +39,17 @@ pub fn prove_existence_of_batcher(
       if and {
         input.output_reference != queue_out_ref,
         input.output_reference != sale_out_ref,
-        value.quantity_of(input.output.value, pid, tkn) >= 1,
+        value.tokens(input.output.value, pid)
+          |> dict.keys()
+          |> list.any(
+              fn(tkn) {
+                bytearray.take(tkn, batcher_token_name_length) == batcher_token_name
+              },
+            ),
       } {
         True
       } else {
-        prove_existence_of_batcher(pid, tkn, rest, queue_out_ref, sale_out_ref)
+        prove_existence_of_batcher(pid, rest, queue_out_ref, sale_out_ref)
       }
     // nothing was found
     [] -> False

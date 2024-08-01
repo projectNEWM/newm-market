@@ -35,6 +35,24 @@ TXIN=$(jq -r --arg alltxin "" --arg pkh "${batcher_pkh}" 'to_entries[] | select(
 script_tx_in=${TXIN::-8}
 echo Script UTxO: $script_tx_in
 
+echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
+${cli} query utxo \
+    --testnet-magic ${testnet_magic} \
+    --address ${batcher_address} \
+    --out-file ../tmp/batcher_utxo.json
+TXNS=$(jq length ../tmp/batcher_utxo.json)
+if [ "${TXNS}" -eq "0" ]; then
+   echo -e "\n \033[0;31m NO UTxOs Found At ${batcher_address} \033[0m \n";
+   exit;
+fi
+alltxin=""
+TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/batcher_utxo.json)
+batcher_tx_in=${TXIN::-8}
+echo Batcher UTxO: $batcher_tx_in
+
+first_utxo=$(python3 -c "x = '${script_tx_in}'; y = '${batcher_tx_in}'; print(x if x < y else y)")
+IFS='#' read -ra array <<< "$first_utxo"
+
 add_to_data=$(python3 -c "
 import sys, json; sys.path.append('../py/'); from token_string import get_token_data, build_token_list;
 file_path = '../tmp/script_utxo.json'
@@ -49,10 +67,17 @@ print(assets)
 ")
 
 batcher_policy_id=$(cat ../../hashes/batcher.hash)
-batcher_token_name="5ca1ab1e000affab1e000ca11ab1e0005e77ab1e"
-complete_token_name="c011ec7ed000a55e75"
+batcher_token_prefix="affab1e0005e77ab1e"
+complete_token_prefix="c011ec7ed000a55e75"
+
+batcher_token_name=$(python3 -c "import sys; sys.path.append('../py/'); from getTokenName import token_name; token_name('${array[0]}', ${array[1]}, '${batcher_token_prefix}')")
+complete_token_name=$(python3 -c "import sys; sys.path.append('../py/'); from getTokenName import token_name; token_name('${array[0]}', ${array[1]}, '${complete_token_prefix}')")
+
+python3 -c "x = '${batcher_token_name}'; y = '${batcher_token_prefix}'; z = x.replace(y, ''); print(z)" > ../tmp/batcher.token
 
 complete_token="1 ${batcher_policy_id}.${complete_token_name}"
+
+batcher_token="1 ${batcher_policy_id}.${batcher_token_name}"
 
 min_utxo=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
@@ -60,34 +85,18 @@ min_utxo=$(${cli} transaction calculate-min-required-utxo \
     --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
     --tx-out="${script_address} + 5000000 + ${assets} + ${complete_token}" | tr -dc '0-9')
 
-# this assumes no entry tokens
 script_address_out="${script_address} + ${min_utxo} + ${assets} + ${complete_token}"
-echo Output: $script_address_out
+echo Collected Assets Token: $complete_token
 
-batcher_token="1 ${batcher_policy_id}.${batcher_token_name}"
 min_utxo=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out="${batcher_address} + 5000000 + ${batcher_token}" | tr -dc '0-9')
 batcher_address_out="${batcher_address} + ${min_utxo} + ${batcher_token}"
-echo Output: $batcher_address_out
+echo Batcher Token: $batcher_token
 #
 # exit
 #
-echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
-${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
-    --address ${batcher_address} \
-    --out-file ../tmp/batcher_utxo.json
-TXNS=$(jq length ../tmp/batcher_utxo.json)
-if [ "${TXNS}" -eq "0" ]; then
-   echo -e "\n \033[0;31m NO UTxOs Found At ${batcher_address} \033[0m \n";
-   exit;
-fi
-alltxin=""
-TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/batcher_utxo.json)
-batcher_tx_in=${TXIN::-8}
-
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
 ${cli} query utxo \
     --testnet-magic ${testnet_magic} \
