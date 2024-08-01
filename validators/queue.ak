@@ -84,6 +84,7 @@ validator(
         // vault stuff
         let vault_logic: Bool =
           if ref_datum.profit_data.profit_margin == 0 {
+            // do not anything with the vault if the margin is set to zero
             True
           } else {
             let vault_addr: Address =
