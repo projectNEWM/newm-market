@@ -129,14 +129,6 @@ validator(
           mint
             |> value.from_minted_value()
             |> value.flatten()
-        // the complete set nft is sent back to the contract
-        let that_value: Value =
-          this_value
-            |> value.add(
-                ref_datum.batcher_data.batcher_pid,
-                constants.complete_set_token_name,
-                1,
-              )
         // get first utxo info
         let first_index: Int = find.first_input_index(inputs)
         let first_tx_hash: TxHash = find.first_input_txid(inputs)
@@ -153,6 +145,14 @@ validator(
             first_index,
             constants.complete_set_token_name,
           )
+        // the complete set nft is sent back to the contract
+        let that_value: Value =
+          this_value
+            |> value.add(
+                ref_datum.batcher_data.batcher_pid,
+                complete_set_token_name,
+                1,
+              )
         //
         //
         //

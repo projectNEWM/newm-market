@@ -58,7 +58,7 @@ IFS='#' read -ra array <<< "$string"
 
 prefix_555="ca7ab1e0"
 
-pointer_name=$(python3 -c "import sys; sys.path.append('../../lib/py/'); from getTokenName import token_name; token_name('${array[0]}', ${array[1]}, '${prefix_555}')")
+pointer_name=$(python3 -c "import sys; sys.path.append('../py/'); from getTokenName import token_name; token_name('${array[0]}', ${array[1]}, '${prefix_555}')")
 
 echo "Pointer Token Name:" $pointer_name
 

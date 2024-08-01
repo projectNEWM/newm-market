@@ -1,4 +1,8 @@
 {
   "constructor": 3,
-  "fields": []
+  "fields": [
+    {
+      "bytes": "008a0096010fa3b7f2b60210d38c0e9f4df704926b4733"
+    }
+  ]
 }
