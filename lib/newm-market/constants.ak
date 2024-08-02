@@ -40,3 +40,15 @@ test take_batcher_token_name() {
     #"affab1e0005e77ab1e0012906f64081c027cb43ef117fcfa89c5da8b90168006"
   bytearray.take(tkn, batcher_token_name_length) == batcher_token_name
 }
+
+fn return_a_tuple() -> (Int, Int) {
+  (69, 420)
+}
+
+test returning_a_tuple() {
+  let (a, b): (Int, Int) = return_a_tuple()
+  and {
+    a == 69,
+    b == 420,
+  }
+}
