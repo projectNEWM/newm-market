@@ -9,6 +9,9 @@ pub const complete_set_token_name: ByteArray = #"c011ec7ed000a55e75"
 // this will save us from doing the length check
 pub const batcher_token_name_length: Int = 9
 
+// this is USD in hex
+pub const usd_policy_id: ByteArray = #"555344"
+
 // Lovelace is just a wrapper around int
 pub type Lovelace =
   Int
