@@ -69,17 +69,35 @@ validator(
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
         //
         // oracle profit stuff
-        let feed_addr: Address =
-          credential.from_script(ref_datum.profit_data.feed_vkh)
-        let feed_input: Input = find.input_by_addr(reference_inputs, feed_addr)
-        expect feed_datum: OracleDatum = data.input_datum(feed_input)
-        let feed_price: Int = oracle.get_price(feed_datum)
-        let feed_moment: Moment = oracle.get_moment(feed_datum)
-        let newm_profit: Int =
-          oracle.calculate_profit(
-            ref_datum.profit_data.profit_margin,
-            feed_price,
-          )
+        let newm_profit_amt: Int =
+          if ref_datum.profit_data.profit_margin == 0 {
+            0
+          } else {
+            let feed_addr: Address =
+              credential.from_script(ref_datum.profit_data.feed_vkh)
+            let feed_input: Input =
+              find.input_by_addr(reference_inputs, feed_addr)
+            expect feed_datum: OracleDatum = data.input_datum(feed_input)
+            let feed_price: Int = oracle.get_price(feed_datum)
+            let feed_moment: Moment = oracle.get_moment(feed_datum)
+            if and {
+              // oracle must have correct feed token
+              values.prove_exact_nft(
+                feed_input.output.value,
+                ref_datum.profit_data.feed_pid,
+                ref_datum.profit_data.feed_tkn,
+              )?,
+              // oracle moment needs to be valid
+              moment.is_contained(feed_moment, validity_range)?,
+            } {
+              oracle.calculate_profit(
+                ref_datum.profit_data.profit_margin,
+                feed_price,
+              )
+            } else {
+              fail @"Invalid Oracle"
+            }
+          }
         //
         // vault stuff
         let vault_logic: Bool =
@@ -103,7 +121,7 @@ validator(
                 |> value.add(
                     ref_datum.profit_data.profit_pid,
                     ref_datum.profit_data.profit_tkn,
-                    newm_profit,
+                    newm_profit_amt,
                   )
             //
             // get correct vault
@@ -159,7 +177,8 @@ validator(
                 -number_of_bundles * sale_datum.bundle.amt,
               )
         //
-        // The value returning to the queue contract
+        // The value returning to the queue contract, if profit margin is zero 
+        // then this is still fine 
         // remove the fee, cost value, incentive, and profit
         // add the bundle value
         let return_queue_value: Value =
@@ -178,7 +197,7 @@ validator(
             |> value.add(
                 ref_datum.profit_data.profit_pid,
                 ref_datum.profit_data.profit_tkn,
-                -newm_profit,
+                -newm_profit_amt,
               )
         //
         // the queue_datum going back to the queue contract
@@ -200,14 +219,6 @@ validator(
         and {
           // if vault is applicable then check the logic
           vault_logic?,
-          // oracle must have correct feed token
-          values.prove_exact_nft(
-            feed_input.output.value,
-            ref_datum.profit_data.feed_pid,
-            ref_datum.profit_data.feed_tkn,
-          )?,
-          // oracle moment needs to be valid
-          moment.is_contained(feed_moment, validity_range)?,
           // single sale script input
           count.inputs_by_addr(inputs, sale_addr, 1)?,
           // one sale script output
@@ -270,17 +281,35 @@ validator(
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
         //
         // oracle profit stuff
-        let feed_addr: Address =
-          credential.from_script(ref_datum.profit_data.feed_vkh)
-        let feed_input: Input = find.input_by_addr(reference_inputs, feed_addr)
-        expect feed_datum: OracleDatum = data.input_datum(feed_input)
-        let feed_price: Int = oracle.get_price(feed_datum)
-        let feed_moment: Moment = oracle.get_moment(feed_datum)
-        let newm_profit: Int =
-          oracle.calculate_profit(
-            ref_datum.profit_data.profit_margin,
-            feed_price,
-          )
+        let newm_profit_amt: Int =
+          if ref_datum.profit_data.profit_margin == 0 {
+            0
+          } else {
+            let feed_addr: Address =
+              credential.from_script(ref_datum.profit_data.feed_vkh)
+            let feed_input: Input =
+              find.input_by_addr(reference_inputs, feed_addr)
+            expect feed_datum: OracleDatum = data.input_datum(feed_input)
+            let feed_price: Int = oracle.get_price(feed_datum)
+            let feed_moment: Moment = oracle.get_moment(feed_datum)
+            if and {
+              // oracle must have correct feed token
+              values.prove_exact_nft(
+                feed_input.output.value,
+                ref_datum.profit_data.feed_pid,
+                ref_datum.profit_data.feed_tkn,
+              )?,
+              // oracle moment needs to be valid
+              moment.is_contained(feed_moment, validity_range)?,
+            } {
+              oracle.calculate_profit(
+                ref_datum.profit_data.profit_margin,
+                feed_price,
+              )
+            } else {
+              fail @"Invalid Oracle"
+            }
+          }
         //
         // calculate the total cost for the number of bundles
         let total_cost: Token =
@@ -307,7 +336,7 @@ validator(
               |> value.add(
                   ref_datum.profit_data.profit_pid,
                   ref_datum.profit_data.profit_tkn,
-                  -newm_profit,
+                  -newm_profit_amt,
                 ),
             total_cost.pid,
             total_cost.tkn,
@@ -347,14 +376,6 @@ validator(
         //
         //
         and {
-          // oracle must have correct feed token
-          values.prove_exact_nft(
-            feed_input.output.value,
-            ref_datum.profit_data.feed_pid,
-            ref_datum.profit_data.feed_tkn,
-          )?,
-          // oracle moment needs to be valid
-          moment.is_contained(feed_moment, validity_range)?,
           // single script input
           count.inputs_by_addr(inputs, this_addr, 1)?,
           // prove correct reference datum
