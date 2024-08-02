@@ -51,10 +51,10 @@
           "bytes": "2ca10dd441432b28e5b4cfb387474aa95bcfbdc43628e78e6663ba24"
         },
         {
-          "bytes": "6f909b6e43929aeb94b80af17d94d80f0bdab2057553759b0f6509de"
+          "bytes": "94533ea497482e7b031f7785198fa47457aa8435828092b0e99b8ccb"
         },
         {
-          "bytes": "16d5bcc800334e77c9ed6fb4460f588f6c7124b69c8654b197cd7dde"
+          "bytes": "190345c27c9190aee63d7babc4d4e6044c95ca8c2b9ec6e7dff6c40f"
         },
         {
           "bytes": "f5a76a47d658b09b0a29909c5397caf7b4d70f1b0de8f5b5f1ebe8cb"
@@ -181,7 +181,7 @@
           "bytes": "744e45574d"
         },
         {
-          "int": 500000000000
+          "int": 0
         }
       ]
     }

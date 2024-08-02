@@ -68,28 +68,79 @@ validator(
         let sale_value: Value = sale_input.output.value
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
         //
-        // vault stuff
-        let vault_addr: Address =
-          addresses.create_script_address(
-            ref_datum.contracts.vault,
-            ref_datum.contracts.stake,
-          )
-        let vault_input: Input = find.input_by_addr(inputs, vault_addr)
-        let vault_out_ref: OutputReference = vault_input.output_reference
-        let vault_value: Value = vault_input.output.value
-        //
         // oracle profit stuff
-        let feed_addr: Address =
-          credential.from_script(ref_datum.profit_data.feed_vkh)
-        let feed_input: Input = find.input_by_addr(reference_inputs, feed_addr)
-        expect feed_datum: OracleDatum = data.input_datum(feed_input)
-        let feed_price: Int = oracle.get_price(feed_datum)
-        let feed_moment: Moment = oracle.get_moment(feed_datum)
-        let newm_profit: Int =
-          oracle.calculate_profit(
-            ref_datum.profit_data.profit_margin,
-            feed_price,
-          )
+        let newm_profit_amt: Int =
+          if ref_datum.profit_data.profit_margin == 0 {
+            0
+          } else {
+            let feed_addr: Address =
+              credential.from_script(ref_datum.profit_data.feed_vkh)
+            let feed_input: Input =
+              find.input_by_addr(reference_inputs, feed_addr)
+            expect feed_datum: OracleDatum = data.input_datum(feed_input)
+            let feed_price: Int = oracle.get_price(feed_datum)
+            let feed_moment: Moment = oracle.get_moment(feed_datum)
+            if and {
+              // oracle must have correct feed token
+              values.prove_exact_nft(
+                feed_input.output.value,
+                ref_datum.profit_data.feed_pid,
+                ref_datum.profit_data.feed_tkn,
+              )?,
+              // oracle moment needs to be valid
+              moment.is_contained(feed_moment, validity_range)?,
+            } {
+              oracle.calculate_profit(
+                ref_datum.profit_data.profit_margin,
+                feed_price,
+              )
+            } else {
+              fail @"Invalid Oracle"
+            }
+          }
+        //
+        // vault stuff
+        let vault_logic: Bool =
+          if ref_datum.profit_data.profit_margin == 0 {
+            // do not anything with the vault if the margin is set to zero
+            True
+          } else {
+            let vault_addr: Address =
+              addresses.create_script_address(
+                ref_datum.contracts.vault,
+                ref_datum.contracts.stake,
+              )
+            let vault_input: Input = find.input_by_addr(inputs, vault_addr)
+            let vault_out_ref: OutputReference = vault_input.output_reference
+            let vault_value: Value = vault_input.output.value
+            //
+            // the value returning to the vault contract
+            // add the newm profit
+            let return_vault_value: Value =
+              vault_value
+                |> value.add(
+                    ref_datum.profit_data.profit_pid,
+                    ref_datum.profit_data.profit_tkn,
+                    newm_profit_amt,
+                  )
+            //
+            // get correct vault
+            expect that_vault_redeemer: VaultRedeemer =
+              find.redeemer_by_ref(redeemers, vault_out_ref)
+            let is_correct_vault_redeemer: Bool =
+              when that_vault_redeemer is {
+                // only the purchase redeemer is allowed
+                AddToVault(_) -> True
+                _ -> fail @"Incorrect Vault Redeemer"
+              }
+            // do the vault logic here since removing from queue is dependent on the newm_profit
+            and {
+              // vault gets the profit
+              payout.exact(vault_addr, return_vault_value, outputs)?,
+              // correct redeemer on the vault contract side
+              is_correct_vault_redeemer?,
+            }
+          }
         //
         // find the quantity of the bundle token on the sale utxo
         let cur_bundle_tkn_amt: Int =
@@ -126,7 +177,8 @@ validator(
                 -number_of_bundles * sale_datum.bundle.amt,
               )
         //
-        // The value returning to the queue contract
+        // The value returning to the queue contract, if profit margin is zero 
+        // then this is still fine 
         // remove the fee, cost value, incentive, and profit
         // add the bundle value
         let return_queue_value: Value =
@@ -145,17 +197,7 @@ validator(
             |> value.add(
                 ref_datum.profit_data.profit_pid,
                 ref_datum.profit_data.profit_tkn,
-                -newm_profit,
-              )
-        //
-        // the value returning to the vault contract
-        // add the newm profit
-        let return_vault_value: Value =
-          vault_value
-            |> value.add(
-                ref_datum.profit_data.profit_pid,
-                ref_datum.profit_data.profit_tkn,
-                newm_profit,
+                -newm_profit_amt,
               )
         //
         // the queue_datum going back to the queue contract
@@ -172,27 +214,11 @@ validator(
             _ -> fail @"Incorrect Sale Redeemer"
           }
         //
-        // get correct vault
-        expect that_vault_redeemer: VaultRedeemer =
-          find.redeemer_by_ref(redeemers, vault_out_ref)
-        let is_corect_vault_redeemer: Bool =
-          when that_vault_redeemer is {
-            // only the purchase redeemer is allowed
-            AddToVault(_) -> True
-            _ -> fail @"Incorrect Vault Redeemer"
-          }
-        //
         //
         //
         and {
-          // oracle must have correct feed token
-          values.prove_exact_nft(
-            feed_input.output.value,
-            ref_datum.profit_data.feed_pid,
-            ref_datum.profit_data.feed_tkn,
-          )?,
-          // oracle moment needs to be valid
-          moment.is_contained(feed_moment, validity_range)?,
+          // if vault is applicable then check the logic
+          vault_logic?,
           // single sale script input
           count.inputs_by_addr(inputs, sale_addr, 1)?,
           // one sale script output
@@ -201,12 +227,8 @@ validator(
           payout.exact(this_addr, return_queue_value, outputs)?,
           // sale gets the cost
           payout.exact(sale_addr, return_sale_value, outputs)?,
-          // vault gets the profit
-          payout.exact(vault_addr, return_vault_value, outputs)?,
           // correct redeemer on the sale contract side
           is_correct_sale_redeemer?,
-          // correct redeemer on the vault contract side
-          is_corect_vault_redeemer?,
           // keep the datum constant
           (this_datum == that_datum)?,
           // prove correct sale datum
@@ -259,17 +281,35 @@ validator(
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
         //
         // oracle profit stuff
-        let feed_addr: Address =
-          credential.from_script(ref_datum.profit_data.feed_vkh)
-        let feed_input: Input = find.input_by_addr(reference_inputs, feed_addr)
-        expect feed_datum: OracleDatum = data.input_datum(feed_input)
-        let feed_price: Int = oracle.get_price(feed_datum)
-        let feed_moment: Moment = oracle.get_moment(feed_datum)
-        let newm_profit: Int =
-          oracle.calculate_profit(
-            ref_datum.profit_data.profit_margin,
-            feed_price,
-          )
+        let newm_profit_amt: Int =
+          if ref_datum.profit_data.profit_margin == 0 {
+            0
+          } else {
+            let feed_addr: Address =
+              credential.from_script(ref_datum.profit_data.feed_vkh)
+            let feed_input: Input =
+              find.input_by_addr(reference_inputs, feed_addr)
+            expect feed_datum: OracleDatum = data.input_datum(feed_input)
+            let feed_price: Int = oracle.get_price(feed_datum)
+            let feed_moment: Moment = oracle.get_moment(feed_datum)
+            if and {
+              // oracle must have correct feed token
+              values.prove_exact_nft(
+                feed_input.output.value,
+                ref_datum.profit_data.feed_pid,
+                ref_datum.profit_data.feed_tkn,
+              )?,
+              // oracle moment needs to be valid
+              moment.is_contained(feed_moment, validity_range)?,
+            } {
+              oracle.calculate_profit(
+                ref_datum.profit_data.profit_margin,
+                feed_price,
+              )
+            } else {
+              fail @"Invalid Oracle"
+            }
+          }
         //
         // calculate the total cost for the number of bundles
         let total_cost: Token =
@@ -296,7 +336,7 @@ validator(
               |> value.add(
                   ref_datum.profit_data.profit_pid,
                   ref_datum.profit_data.profit_tkn,
-                  -newm_profit,
+                  -newm_profit_amt,
                 ),
             total_cost.pid,
             total_cost.tkn,
@@ -336,14 +376,6 @@ validator(
         //
         //
         and {
-          // oracle must have correct feed token
-          values.prove_exact_nft(
-            feed_input.output.value,
-            ref_datum.profit_data.feed_pid,
-            ref_datum.profit_data.feed_tkn,
-          )?,
-          // oracle moment needs to be valid
-          moment.is_contained(feed_moment, validity_range)?,
           // single script input
           count.inputs_by_addr(inputs, this_addr, 1)?,
           // prove correct reference datum

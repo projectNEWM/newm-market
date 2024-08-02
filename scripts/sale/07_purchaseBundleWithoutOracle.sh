@@ -173,7 +173,7 @@ current_price=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[0].v.int')
 echo Current NEWM/USD Price: $current_price
 margin=$(jq '.fields[7].fields[5].int' ../data/reference/reference-datum.json)
 # Check if margin is zero and exit if it is
-if [ "$margin" -eq 0 ]; then
+if [ "$margin" -ne 0 ]; then
     echo "Margin is zero, exiting."
     exit 1
 fi
@@ -194,10 +194,10 @@ ttl=$(python -c "import time; import sys; print(int(${end_time} / 1000) - int(ti
 echo Seconds Left for validity ${ttl}
 profit="$((${profit_amt} + ${vault_starting_profit})) ${profit_pid}.${profit_tkn}"
 variable=${profit_amt}; jq -r --argjson variable "$variable" '.fields[0].list[0].fields[2].int=$variable' ../data/vault/add-to-vault-redeemer.json | sponge ../data/vault/add-to-vault-redeemer.json
-vault_address_out="${vault_script_address} + ${vault_starting_lovelace} + ${profit}"
-echo "Vault OUTPUT:" ${vault_address_out}
+# vault_address_out="${vault_script_address} + ${vault_starting_lovelace} + ${profit}"
+# echo "Vault OUTPUT:" ${vault_address_out}
 
-exit
+# exit
 
 #
 # Get the sale stuff going
@@ -275,11 +275,8 @@ ${cli} transaction build-raw \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --out-file ../tmp/tx.draft \
-    --invalid-before ${start_slot} \
-    --invalid-hereafter ${end_slot} \
     --tx-in-collateral="${collat_utxo}" \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
-    --read-only-tx-in-reference ${feed_tx_in} \
     --tx-in ${batcher_tx_in} \
     --tx-in ${sale_tx_in} \
     --spending-tx-in-reference="${sale_ref_utxo}#1" \
@@ -293,14 +290,6 @@ ${cli} transaction build-raw \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${execution_unts}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
-    --tx-in ${vault_tx_in} \
-    --spending-tx-in-reference="${vault_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
-    --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${execution_unts}" \
-    --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
-    --tx-out="${vault_address_out}" \
-    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     --tx-out="${sale_address_out}" \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json  \
     --tx-out="${queue_address_out}" \
@@ -320,12 +309,12 @@ else
     echo "Validation Success."
 fi
 #
-exit
+# exit
 #
 sale_index=$(python3 -c "
 import sys; sys.path.append('../py/'); 
 from lexico import sort_lexicographically, get_index_in_order;
-ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vault_tx_in}');
+ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}');
 index = get_index_in_order(ordered_list, '${sale_tx_in}');
 print(index)"
 )
@@ -342,7 +331,7 @@ echo $sale_execution_unts
 queue_index=$(python3 -c "
 import sys; sys.path.append('../py/'); 
 from lexico import sort_lexicographically, get_index_in_order;
-ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vault_tx_in}');
+ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}');
 index = get_index_in_order(ordered_list, '${queue_tx_in}');
 print(index)"
 )
@@ -356,30 +345,13 @@ queue_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 queue_computation_fee_int=$(printf "%.0f" "$queue_computation_fee")
 echo $queue_execution_unts
 
-vault_index=$(python3 -c "
-import sys; sys.path.append('../py/'); 
-from lexico import sort_lexicographically, get_index_in_order;
-ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vault_tx_in}');
-index = get_index_in_order(ordered_list, '${vault_tx_in}');
-print(index)"
-)
-echo $vault_index
-
-cpu=$(jq -r --argjson index "$vault_index" '.[$index].cpu' ../data/exe_units.json)
-mem=$(jq -r --argjson index "$vault_index" '.[$index].mem' ../data/exe_units.json)
-
-vault_execution_unts="(${cpu}, ${mem})"
-vault_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
-vault_computation_fee_int=$(printf "%.0f" "$vault_computation_fee")
-echo $vault_execution_unts
-
 FEE=$(${cli} transaction calculate-min-fee \
     --tx-body-file ../tmp/tx.draft \
     --protocol-params-file ../tmp/protocol.json \
     --witness-count 3)
 fee=$(echo $FEE | rev | cut -c 9- | rev)
 echo Tx Fee: $fee
-total_fee=$((${fee} + ${sale_computation_fee_int} + ${queue_computation_fee_int} + ${vault_computation_fee_int}))
+total_fee=$((${fee} + ${sale_computation_fee_int} + ${queue_computation_fee_int}))
 echo Total Fee: $total_fee
 change_value=$((${queue_ada_return} - ${total_fee}))
 queue_address_out="${queue_script_address} + ${change_value} + ${queue_bundle_value} + ${queue_return_payment_value}"
@@ -391,11 +363,8 @@ ${cli} transaction build-raw \
     --babbage-era \
     --protocol-params-file ../tmp/protocol.json \
     --out-file ../tmp/tx.draft \
-    --invalid-before ${start_slot} \
-    --invalid-hereafter ${end_slot} \
     --tx-in-collateral="${collat_utxo}" \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
-    --read-only-tx-in-reference ${feed_tx_in} \
     --tx-in ${batcher_tx_in} \
     --tx-in ${sale_tx_in} \
     --spending-tx-in-reference="${sale_ref_utxo}#1" \
@@ -409,19 +378,11 @@ ${cli} transaction build-raw \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${queue_execution_unts}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
-    --tx-in ${vault_tx_in} \
-    --spending-tx-in-reference="${vault_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
-    --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${vault_execution_unts}" \
-    --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
-    --tx-out="${batcher_address_out}" \
-    --tx-out="${vault_address_out}" \
-    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     --tx-out="${sale_address_out}" \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json  \
     --tx-out="${queue_address_out}" \
     --tx-out-inline-datum-file ../data/queue/queue-datum.json  \
+    --tx-out="${batcher_address_out}" \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
     --fee ${total_fee}
