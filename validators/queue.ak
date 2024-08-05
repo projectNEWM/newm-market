@@ -13,6 +13,7 @@ use assist/types/moment.{Moment}
 use assist/types/token.{Token}
 use assist/types/wallet.{Wallet}
 use assist/values
+use newm_market/constants.{usd_policy_id}
 use newm_market/types/oracle.{OracleDatum}
 use newm_market/types/queue.{
   QueueCancel, QueueDatum, QueuePurchase, QueueRedeemer, QueueRefund,
@@ -69,9 +70,12 @@ validator(
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
         //
         // oracle profit stuff
-        let newm_profit_amt: Int =
-          if ref_datum.profit_data.profit_margin == 0 {
-            0
+        let (newm_profit_amt, cost_token): (Int, Token) =
+          if and {
+            ref_datum.profit_data.profit_margin == 0,
+            sale_datum.cost.pid != usd_policy_id,
+          } {
+            (0, sale_datum.cost)
           } else {
             let feed_addr: Address =
               credential.from_script(ref_datum.profit_data.feed_vkh)
@@ -90,10 +94,25 @@ validator(
               // oracle moment needs to be valid
               moment.is_contained(feed_moment, validity_range)?,
             } {
-              oracle.calculate_profit(
-                ref_datum.profit_data.profit_margin,
-                feed_price,
-              )
+              let amt: Int =
+                oracle.calculate_profit(
+                  ref_datum.profit_data.profit_margin,
+                  feed_price,
+                )
+              if sale_datum.cost.pid == usd_policy_id {
+                let usd_amt: Int =
+                  oracle.calculate_profit(sale_datum.cost.amt, feed_price)
+                (
+                  amt,
+                  Token {
+                    pid: ref_datum.profit_data.profit_pid,
+                    tkn: ref_datum.profit_data.profit_tkn,
+                    amt: usd_amt,
+                  },
+                )
+              } else {
+                (amt, sale_datum.cost)
+              }
             } else {
               fail @"Invalid Oracle"
             }
@@ -164,8 +183,7 @@ validator(
           }
         //
         // calculate the total cost for the number of bundles
-        let total_cost: Token =
-          token.multiply(sale_datum.cost, number_of_bundles)
+        let total_cost: Token = token.multiply(cost_token, number_of_bundles)
         //
         // the value returning to the sale contract
         // add the cost to the sale value and remove the bundles
@@ -281,9 +299,12 @@ validator(
         expect sale_datum: SaleDatum = data.input_datum(sale_input)
         //
         // oracle profit stuff
-        let newm_profit_amt: Int =
-          if ref_datum.profit_data.profit_margin == 0 {
-            0
+        let (newm_profit_amt, cost_token): (Int, Token) =
+          if and {
+            ref_datum.profit_data.profit_margin == 0,
+            sale_datum.cost.pid != usd_policy_id,
+          } {
+            (0, sale_datum.cost)
           } else {
             let feed_addr: Address =
               credential.from_script(ref_datum.profit_data.feed_vkh)
@@ -302,10 +323,25 @@ validator(
               // oracle moment needs to be valid
               moment.is_contained(feed_moment, validity_range)?,
             } {
-              oracle.calculate_profit(
-                ref_datum.profit_data.profit_margin,
-                feed_price,
-              )
+              let amt: Int =
+                oracle.calculate_profit(
+                  ref_datum.profit_data.profit_margin,
+                  feed_price,
+                )
+              if sale_datum.cost.pid == usd_policy_id {
+                let usd_amt: Int =
+                  oracle.calculate_profit(sale_datum.cost.amt, feed_price)
+                (
+                  amt,
+                  Token {
+                    pid: ref_datum.profit_data.profit_pid,
+                    tkn: ref_datum.profit_data.profit_tkn,
+                    amt: usd_amt,
+                  },
+                )
+              } else {
+                (amt, sale_datum.cost)
+              }
             } else {
               fail @"Invalid Oracle"
             }
@@ -313,7 +349,7 @@ validator(
         //
         // calculate the total cost for the number of bundles
         let total_cost: Token =
-          token.multiply(sale_datum.cost, this_datum.number_of_bundles)
+          token.multiply(cost_token, this_datum.number_of_bundles)
         // current number of bundle tokens
         let cur_bundle_tkn_amt: Int =
           value.quantity_of(

@@ -9,6 +9,9 @@ pub const complete_set_token_name: ByteArray = #"c011ec7ed000a55e75"
 // this will save us from doing the length check
 pub const batcher_token_name_length: Int = 9
 
+// echo -n "USD" | xxd -ps
+pub const usd_policy_id: ByteArray = #"555344"
+
 // Lovelace is just a wrapper around int
 pub type Lovelace =
   Int
@@ -36,4 +39,16 @@ test take_batcher_token_name() {
   let tkn: ByteArray =
     #"affab1e0005e77ab1e0012906f64081c027cb43ef117fcfa89c5da8b90168006"
   bytearray.take(tkn, batcher_token_name_length) == batcher_token_name
+}
+
+fn return_a_tuple() -> (Int, Int) {
+  (69, 420)
+}
+
+test returning_a_tuple() {
+  let (a, b): (Int, Int) = return_a_tuple()
+  and {
+    a == 69,
+    b == 420,
+  }
 }

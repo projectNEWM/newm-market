@@ -53,12 +53,15 @@ feed_datum=$(jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_
 start_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[1].v.int')
 end_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[2].v.int')
 # subtract a second from it so its forced to be contained
-timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${start_time} / 1000 + 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+
+delta=45
+timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${start_time} / 1000) + ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 start_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
-timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${end_time} / 1000 - 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${end_time} / 1000) - ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
+
 ttl=$(python -c "import time; import sys; print(int(${end_time} / 1000) - int(time.time()))")
 echo Seconds Left for validity ${ttl}
 
@@ -154,7 +157,7 @@ ${cli} transaction build-raw \
     --invalid-hereafter ${end_slot} \
     --tx-in-collateral="${collat_utxo}" \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
-    --read-only-tx-in-reference="${last_sale_utxo}#0" \
+    --read-only-tx-in-reference="${last_sale_utxo}#1" \
     --read-only-tx-in-reference ${feed_tx_in} \
     --tx-in ${batcher_tx_in} \
     --tx-in ${script_tx_in} \
@@ -208,7 +211,7 @@ ${cli} transaction build-raw \
     --invalid-hereafter ${end_slot} \
     --tx-in-collateral="${collat_utxo}" \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
-    --read-only-tx-in-reference="${last_sale_utxo}#0" \
+    --read-only-tx-in-reference="${last_sale_utxo}#1" \
     --read-only-tx-in-reference ${feed_tx_in} \
     --tx-in ${batcher_tx_in} \
     --tx-in ${script_tx_in} \
