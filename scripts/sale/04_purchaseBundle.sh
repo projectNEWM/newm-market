@@ -177,6 +177,7 @@ if [ "$margin" -eq 0 ]; then
     echo "Margin is zero, exiting."
     exit 1
 fi
+
 profit_pid=$(jq -r '.fields[7].fields[3].bytes' ../data/reference/reference-datum.json)
 profit_tkn=$(jq -r '.fields[7].fields[4].bytes' ../data/reference/reference-datum.json)
 profit_amt=$(python -c "p = ${margin} // ${current_price};print(p)")
@@ -211,6 +212,14 @@ sale_tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
 # the cost token
 cost_pid=$(jq -r '.fields[2].fields[0].bytes' ../data/sale/sale-datum.json)
 cost_tkn=$(jq -r '.fields[2].fields[1].bytes' ../data/sale/sale-datum.json)
+
+if [ "$cost_pid" = "555344" ]; then
+    echo "Cost Is In USD."
+    exit 1;
+fi
+
+exit
+
 # the pointer token for the sale
 pointer_pid=$(cat ../../hashes/pointer_policy.hash)
 pointer_tkn=$(cat ../tmp/pointer.token)

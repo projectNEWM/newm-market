@@ -48,13 +48,6 @@ pointer_tkn=$(cat ../tmp/pointer.token)
 variable=${pointer_tkn}; jq --arg variable "$variable" '.fields[3].bytes=$variable' ../data/queue/queue-datum.json > ../data/queue/queue-datum-new.json
 mv ../data/queue/queue-datum-new.json ../data/queue/queue-datum.json
 
-# the pure ada part
-cost_pid=$(jq -r '.fields[2].fields[0].bytes' ../data/sale/sale-datum.json)
-cost_tkn=$(jq -r '.fields[2].fields[1].bytes' ../data/sale/sale-datum.json)
-cost_amt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
-pay_amt=$((${bundleSize} * ${cost_amt}))
-
-cost="${pay_amt} ${cost_pid}.${cost_tkn}"
 # hardcode for now
 incentive="2000000 769c4c6e9bc3ba5406b9b89fb7beb6819e638ff2e2de63f008d5bcff.744e45574d"
 
@@ -81,18 +74,38 @@ echo Feed UTxO: $feed_tx_in
 feed_datum=$(jq -r --arg policy_id "$feed_pid" --arg token_name "$feed_tkn" 'to_entries[] | select(.value.value[$policy_id][$token_name] == 1) | .value.inlineDatum' ../tmp/feed_utxo.json)
 current_price=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[0].v.int')
 echo Current NEWM/USD Price: $current_price
+
 margin=$(jq '.fields[7].fields[5].int' ../data/reference/reference-datum.json)
 profit_pid=$(jq -r '.fields[7].fields[3].bytes' ../data/reference/reference-datum.json)
 profit_tkn=$(jq -r '.fields[7].fields[4].bytes' ../data/reference/reference-datum.json)
 
 # This must be true: e < N*C + P
 profit_amt=$(python -c "p = ${margin} // ${current_price};print(p)")
+echo Profit Amt: ${profit_amt}
+profit="${profit_amt} ${profit_pid}.${profit_tkn}"
+
+# the cost part
+cost_pid=$(jq -r '.fields[2].fields[0].bytes' ../data/sale/sale-datum.json)
+
+if [ "$cost_pid" = "555344" ]; then
+    usd_amt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
+    cost_amt=$(python -c "p = ${usd_amt} // ${current_price};print(p)")
+    pay_amt=$((${bundleSize} * ${cost_amt}))
+    cost="${pay_amt} ${profit_pid}.${profit_tkn}"
+else
+    cost_tkn=$(jq -r '.fields[2].fields[1].bytes' ../data/sale/sale-datum.json)
+    cost_amt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
+    pay_amt=$((${bundleSize} * ${cost_amt}))
+    cost="${pay_amt} ${cost_pid}.${cost_tkn}"
+fi
+
+echo Cost: ${pay_amt}
+
+# exit
+
 extra_pct=40 # 100 / 40 = 2.5% change
 extra_amt=$(python -c "nc = ${pay_amt};p = ${profit_amt};e = (nc + p)//${extra_pct}; print(e)")
-echo Cost: ${pay_amt}
-echo Profit Amt: ${profit_amt}
 echo Extra Amt: ${extra_amt}
-profit="${profit_amt} ${profit_pid}.${profit_tkn}"
 extra="${extra_amt} ${profit_pid}.${profit_tkn}"
 
 # this pays for the fees
