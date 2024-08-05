@@ -184,12 +184,14 @@ echo Profit Amt: ${profit_amt}
 start_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[1].v.int')
 end_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[2].v.int')
 # subtract a second from it so its forced to be contained
-timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${start_time} / 1000 + 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+delta=45
+timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${start_time} / 1000) + ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 start_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
-timestamp=$(python -c "import datetime; print(datetime.datetime.utcfromtimestamp(${end_time} / 1000 - 1).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${end_time} / 1000) - ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
+
 ttl=$(python -c "import time; import sys; print(int(${end_time} / 1000) - int(time.time()))")
 echo Seconds Left for validity ${ttl}
 profit="$((${profit_amt} + ${vault_starting_profit})) ${profit_pid}.${profit_tkn}"
@@ -197,7 +199,7 @@ variable=${profit_amt}; jq -r --argjson variable "$variable" '.fields[0].list[0]
 vault_address_out="${vault_script_address} + ${vault_starting_lovelace} + ${profit}"
 echo "Vault OUTPUT:" ${vault_address_out}
 
-exit
+# exit
 
 #
 # Get the sale stuff going
@@ -268,7 +270,7 @@ queue_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/queue-reference-utxo.s
 vault_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/vault-reference-utxo.signed )
 data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
-execution_unts="(0, 0)"
+execution_units="(0, 0)"
 
 echo -e "\033[0;36m Building Tx \033[0m"
 ${cli} transaction build-raw \
@@ -285,19 +287,19 @@ ${cli} transaction build-raw \
     --spending-tx-in-reference="${sale_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${execution_unts}" \
+    --spending-reference-tx-in-execution-units="${execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/sale/purchase-redeemer.json \
     --tx-in ${queue_tx_in} \
     --spending-tx-in-reference="${queue_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${execution_unts}" \
+    --spending-reference-tx-in-execution-units="${execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
     --tx-in ${vault_tx_in} \
     --spending-tx-in-reference="${vault_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${execution_unts}" \
+    --spending-reference-tx-in-execution-units="${execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
     --tx-out="${vault_address_out}" \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
@@ -320,7 +322,7 @@ else
     echo "Validation Success."
 fi
 #
-exit
+# exit
 #
 sale_index=$(python3 -c "
 import sys; sys.path.append('../py/'); 
@@ -329,15 +331,15 @@ ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vaul
 index = get_index_in_order(ordered_list, '${sale_tx_in}');
 print(index)"
 )
-echo $sale_index
+echo Sale: $sale_index
 
 cpu=$(jq -r --argjson index "$sale_index" '.[$index].cpu' ../data/exe_units.json)
 mem=$(jq -r --argjson index "$sale_index" '.[$index].mem' ../data/exe_units.json)
 
-sale_execution_unts="(${cpu}, ${mem})"
+sale_execution_units="(${cpu}, ${mem})"
 sale_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 sale_computation_fee_int=$(printf "%.0f" "$sale_computation_fee")
-echo $sale_execution_unts
+echo $sale_execution_units
 
 queue_index=$(python3 -c "
 import sys; sys.path.append('../py/'); 
@@ -346,15 +348,15 @@ ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vaul
 index = get_index_in_order(ordered_list, '${queue_tx_in}');
 print(index)"
 )
-echo $queue_index
+echo Queue: $queue_index
 
 cpu=$(jq -r --argjson index "$queue_index" '.[$index].cpu' ../data/exe_units.json)
 mem=$(jq -r --argjson index "$queue_index" '.[$index].mem' ../data/exe_units.json)
 
-queue_execution_unts="(${cpu}, ${mem})"
+queue_execution_units="(${cpu}, ${mem})"
 queue_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 queue_computation_fee_int=$(printf "%.0f" "$queue_computation_fee")
-echo $queue_execution_unts
+echo $queue_execution_units
 
 vault_index=$(python3 -c "
 import sys; sys.path.append('../py/'); 
@@ -363,15 +365,15 @@ ordered_list = sort_lexicographically('${sale_tx_in}', '${queue_tx_in}', '${vaul
 index = get_index_in_order(ordered_list, '${vault_tx_in}');
 print(index)"
 )
-echo $vault_index
+echo Vault: $vault_index
 
 cpu=$(jq -r --argjson index "$vault_index" '.[$index].cpu' ../data/exe_units.json)
 mem=$(jq -r --argjson index "$vault_index" '.[$index].mem' ../data/exe_units.json)
 
-vault_execution_unts="(${cpu}, ${mem})"
+vault_execution_units="(${cpu}, ${mem})"
 vault_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 vault_computation_fee_int=$(printf "%.0f" "$vault_computation_fee")
-echo $vault_execution_unts
+echo $vault_execution_units
 
 FEE=$(${cli} transaction calculate-min-fee \
     --tx-body-file ../tmp/tx.draft \
@@ -401,27 +403,27 @@ ${cli} transaction build-raw \
     --spending-tx-in-reference="${sale_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${sale_execution_unts}" \
+    --spending-reference-tx-in-execution-units="${sale_execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/sale/purchase-redeemer.json \
     --tx-in ${queue_tx_in} \
     --spending-tx-in-reference="${queue_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${queue_execution_unts}" \
+    --spending-reference-tx-in-execution-units="${queue_execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
     --tx-in ${vault_tx_in} \
     --spending-tx-in-reference="${vault_ref_utxo}#1" \
     --spending-plutus-script-v2 \
     --spending-reference-tx-in-inline-datum-present \
-    --spending-reference-tx-in-execution-units="${vault_execution_unts}" \
+    --spending-reference-tx-in-execution-units="${vault_execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
-    --tx-out="${batcher_address_out}" \
     --tx-out="${vault_address_out}" \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     --tx-out="${sale_address_out}" \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json  \
     --tx-out="${queue_address_out}" \
     --tx-out-inline-datum-file ../data/queue/queue-datum.json  \
+    --tx-out="${batcher_address_out}" \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
     --fee ${total_fee}
