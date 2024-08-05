@@ -20,6 +20,10 @@ artist_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
+# payment token
+newm_pid="769c4c6e9bc3ba5406b9b89fb7beb6819e638ff2e2de63f008d5bcff"
+newm_tkn="744e45574d"
+
 pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
 tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
 total_amt=100000000
@@ -47,6 +51,7 @@ script_tx_in=$TXIN
 # echo $script_tx_in
 
 # exit
+PROFIT_VALUE=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${newm_pid}" --arg tkn "${newm_tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value[$pid][$tkn]' ../tmp/script_utxo.json)
 CURRENT_VALUE=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${pid}" --arg tkn "${tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value[$pid][$tkn]' ../tmp/script_utxo.json)
 POINTER_VALUE=$(jq -r --arg ppid "${pointer_pid}" --arg ptkn "${pointer_tkn}" 'to_entries[] | select(.value.value[$ppid][$ptkn] == 1) | .value.value.lovelace' ../tmp/script_utxo.json)
 LOVELACE_VALUE=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${pid}" --arg tkn "${tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value.lovelace' ../tmp/script_utxo.json)
@@ -55,6 +60,10 @@ if [ ! -z "$POINTER_VALUE" ]; then
     script_address_out="${script_address} + ${LOVELACE_VALUE} + ${CURRENT_VALUE} ${pid}.${tkn} + 1 ${pointer_pid}.${pointer_tkn}"
 else
     script_address_out="${script_address} + ${LOVELACE_VALUE} + ${CURRENT_VALUE} ${pid}.${tkn}"
+fi
+
+if [ ! -z "$PROFIT_VALUE" ]; then
+    script_address_out+=" + ${PROFIT_VALUE} ${newm_pid}.${newm_tkn}"
 fi
 
 echo "Update OUTPUT: "${script_address_out}
