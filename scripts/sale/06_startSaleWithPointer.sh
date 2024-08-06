@@ -3,14 +3,14 @@ set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 # staking contract
 stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 sale_script_path="../../contracts/sale_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # pointer minter key
 newm_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
@@ -31,7 +31,7 @@ total_amt=100000000
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${script_address} \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --out-file ../tmp/script_utxo.json
 # transaction variables
 TXNS=$(jq length ../tmp/script_utxo.json)
@@ -86,7 +86,7 @@ echo $script_address_out
 
 echo -e "\033[0;36m Gathering Artist UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${artist_address} \
     --out-file ../tmp/artist_utxo.json
 TXNS=$(jq length ../tmp/artist_utxo.json)
@@ -100,7 +100,7 @@ artist_tx_in=${TXIN::-8}
 
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
 TXNS=$(jq length ../tmp/collat_utxo.json)
@@ -162,7 +162,7 @@ pointer_computation_fee_int=$(printf "%.0f" "$pointer_computation_fee")
 
 FEE=$(${cli} transaction calculate-min-fee \
 --tx-body-file ../tmp/tx.draft \
---testnet-magic ${testnet_magic} \
+${network} \
 --protocol-params-file ../tmp/protocol.json \
 --witness-count 3)
 fee=$(echo $FEE | rev | cut -c 9- | rev)
@@ -206,13 +206,13 @@ ${cli} transaction sign \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
 tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)

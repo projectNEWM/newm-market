@@ -3,14 +3,14 @@ set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 # staking contract
 stake_script_path="../../contracts/stake_contract.plutus"
 
 # vault contract
 vault_script_path="../../contracts/vault_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # collat, artist, reference
 batcher_address=$(cat ../wallets/batcher-wallet/payment.addr)
@@ -27,7 +27,7 @@ collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${script_address} \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --out-file ../tmp/script_utxo.json
 # transaction variables
 TXNS=$(jq length ../tmp/script_utxo.json)
@@ -50,7 +50,7 @@ echo Output: $script_address_out
 #
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${batcher_address} \
     --out-file ../tmp/batcher_utxo.json
 TXNS=$(jq length ../tmp/batcher_utxo.json)
@@ -64,7 +64,7 @@ batcher_tx_in=${TXIN::-8}
 
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
 TXNS=$(jq length ../tmp/collat_utxo.json)
@@ -96,7 +96,7 @@ FEE=$(${cli} transaction build \
     --required-signer-hash ${batcher_pkh} \
     --required-signer-hash ${collat_pkh} \
     --required-signer-hash ${newm_pkh} \
-    --testnet-magic ${testnet_magic})
+    ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
@@ -112,14 +112,14 @@ ${cli} transaction sign \
     --signing-key-file ../wallets/newm-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

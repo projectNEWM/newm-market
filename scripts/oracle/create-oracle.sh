@@ -3,7 +3,7 @@ set -e
 #
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 # Addresses
 sender_path="../wallets/oracle-wallet/"
@@ -11,7 +11,7 @@ sender_address=$(cat ${sender_path}payment.addr)
 
 # oracle contract
 oracle_script_path="../../contracts/oracle_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${oracle_script_path} --testnet-magic ${testnet_magic})
+script_address=$(${cli} address build --payment-script-file ${oracle_script_path} ${network})
 
 min_value=$(${cli} transaction calculate-min-required-utxo \
     --babbage-era \
@@ -27,7 +27,7 @@ echo "Oracle OUTPUT: "${oracle_address_out}
 #
 echo -e "\033[0;36m Gathering UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${sender_address} \
     --out-file ../tmp/sender_utxo.json
 
@@ -48,7 +48,7 @@ FEE=$(${cli} transaction build \
     --tx-in ${seller_tx_in} \
     --tx-out="${oracle_address_out}" \
     --tx-out-inline-datum-file ../data/oracle/oracle-datum.json \
-    --testnet-magic ${testnet_magic})
+    ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
@@ -62,14 +62,14 @@ ${cli} transaction sign \
     --signing-key-file ${sender_path}payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

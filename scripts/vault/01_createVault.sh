@@ -3,14 +3,14 @@ set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 # staking contract
 stake_script_path="../../contracts/stake_contract.plutus"
 
 # vault contract
 vault_script_path="../../contracts/vault_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # collat, buyer, reference
 batcher_path="batcher-wallet"
@@ -26,7 +26,7 @@ echo "Script OUTPUT: "${script_address_out}
 #
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${batcher_address} \
     --out-file ../tmp/batcher_utxo.json
 TXNS=$(jq length ../tmp/batcher_utxo.json)
@@ -47,7 +47,7 @@ FEE=$(${cli} transaction build \
     --tx-in ${batcher_tx_in} \
     --tx-out="${script_address_out}" \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
-    --testnet-magic ${testnet_magic})
+    ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
@@ -61,14 +61,14 @@ ${cli} transaction sign \
     --signing-key-file ../wallets/${batcher_path}/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx
