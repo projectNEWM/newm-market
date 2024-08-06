@@ -3,22 +3,22 @@ set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 # staking contract
 stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 sale_script_path="../../contracts/sale_contract.plutus"
-sale_script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+sale_script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # queue contract
 queue_script_path="../../contracts/queue_contract.plutus"
-queue_script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+queue_script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # vault contract
 vault_script_path="../../contracts/vault_contract.plutus"
-vault_script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+vault_script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # oracle feed
 # this needs to be better
@@ -50,7 +50,7 @@ newm_tkn="744e45574d"
 echo -e "\033[0;36m\nGathering Vault Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${vault_script_address} \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --out-file ../tmp/vault_script_utxo.json
 # transaction variables
 TXNS=$(jq length ../tmp/vault_script_utxo.json)
@@ -65,7 +65,7 @@ echo VAULT UTxO: $vault_tx_in
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${batcher_address} \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --out-file ../tmp/batcher_utxo.json
 # transaction variables
 TXNS=$(jq length ../tmp/batcher_utxo.json)
@@ -80,7 +80,7 @@ echo Batcher UTXO: ${batcher_tx_in}
 echo -e "\033[0;36m Gathering Queue Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${queue_script_address} \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --out-file ../tmp/queue_script_utxo.json
 # transaction variables
 TXNS=$(jq length ../tmp/queue_script_utxo.json)
@@ -95,7 +95,7 @@ echo QUEUE UTXO: ${queue_tx_in}
 echo -e "\033[0;36m Gathering Sale Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${sale_script_address} \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --out-file ../tmp/sale_script_utxo.json
 # transaction variables
 TXNS=$(jq length ../tmp/sale_script_utxo.json)
@@ -110,7 +110,7 @@ echo SALE UTXO ${sale_tx_in}
 echo -e "\033[0;36m Gathering Oracle Script UTxO Information  \033[0m"
 ${cli} query utxo \
     --address ${feed_addr} \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --out-file ../tmp/feed_utxo.json
 TXNS=$(jq length ../tmp/feed_utxo.json)
 if [ "${TXNS}" -eq "0" ]; then
@@ -125,7 +125,7 @@ echo Feed UTxO: $feed_tx_in
 # collat info
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
 TXNS=$(jq length ../tmp/collat_utxo.json)
@@ -187,9 +187,9 @@ end_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[2].v.int')
 # subtract a second from it so its forced to be contained
 delta=45
 timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${start_time} / 1000) + ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
-start_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
+start_slot=$(${cli} query slot-number ${network} ${timestamp})
 timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${end_time} / 1000) - ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
-end_slot=$(${cli} query slot-number --testnet-magic ${testnet_magic} ${timestamp})
+end_slot=$(${cli} query slot-number ${network} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
 
@@ -445,16 +445,16 @@ ${cli} transaction sign \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx
 
 cp ../tmp/tx.signed ../tmp/last-sale-utxo.signed

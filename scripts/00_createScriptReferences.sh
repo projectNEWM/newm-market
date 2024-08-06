@@ -4,8 +4,8 @@ set -e
 # SET UP VARS HERE
 export CARDANO_NODE_SOCKET_PATH=$(cat ./data/path_to_socket.sh)
 cli=$(cat ./data/path_to_cli.sh)
-testnet_magic=$(cat ./data/testnet.magic)
-network="--testnet-magic ${testnet_magic}"
+network=$(cat ./data/network.sh)
+network="${network}"
 
 
 mkdir -p ./tmp
@@ -63,7 +63,7 @@ do
     --tx-out-reference-script-file ${contract} \
     --fee 900000
 
-    FEE=$(cardano-cli transaction calculate-min-fee \
+    FEE=$(${cli} transaction calculate-min-fee \
         --tx-body-file ./tmp/tx.draft \
         --protocol-params-file ./tmp/protocol.json \
         --witness-count 1)

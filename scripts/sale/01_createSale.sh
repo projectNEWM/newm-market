@@ -3,14 +3,14 @@ set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 # staking contract
 stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 sale_script_path="../../contracts/sale_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # artist address
 artist_address=$(cat ../wallets/artist-wallet/payment.addr)
@@ -44,7 +44,7 @@ echo "Sale OUTPUT: "${script_address_out}
 #
 echo -e "\033[0;36m Gathering Seller UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${artist_address} \
     --out-file ../tmp/artist_utxo.json
 TXNS=$(jq length ../tmp/artist_utxo.json)
@@ -65,7 +65,7 @@ FEE=$(${cli} transaction build \
     --tx-in ${artist_tx_in} \
     --tx-out="${script_address_out}" \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json  \
-    --testnet-magic ${testnet_magic})
+    ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
@@ -79,14 +79,14 @@ ${cli} transaction sign \
     --signing-key-file ../wallets/artist-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

@@ -5,11 +5,11 @@ MAX_NUMBER_OF_TX=250
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 stake_script_path="../../contracts/stake_contract.plutus"
 queue_script_path="../../contracts/queue_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} --testnet-magic ${testnet_magic})
+script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
 
 max_bundle_size=$(jq -r '.fields[3].int' ../data/sale/sale-datum.json)
 
@@ -79,7 +79,7 @@ script_address_out="${script_address} + ${adaPay} + ${queue_value}"
 if [[ ${1} -eq 0 ]] ; then
     echo -e "\033[0;36m Gathering Issuer UTxO Information  \033[0m"
     ${cli} query utxo \
-        --testnet-magic ${testnet_magic} \
+        ${network} \
         --address ${issuer_address} \
         --out-file ../tmp/issuer_utxo.json
     TXNS=$(jq length ../tmp/issuer_utxo.json)
@@ -151,7 +151,7 @@ ${cli} transaction build-raw \
     --tx-out="${issuer_address_out}" \
     --fee 900000
 
-FEE=$(${cli} transaction calculate-min-fee --tx-body-file ../tmp/tx.draft --testnet-magic ${testnet_magic} --protocol-params-file ../tmp/protocol.json --tx-in-count 1 --tx-out-count 2 --witness-count 1)
+FEE=$(${cli} transaction calculate-min-fee --tx-body-file ../tmp/tx.draft ${network} --protocol-params-file ../tmp/protocol.json --tx-in-count 1 --tx-out-count 2 --witness-count 1)
 # echo $FEE
 fee=$(echo $FEE | rev | cut -c 9- | rev)
 
@@ -176,16 +176,16 @@ ${cli} transaction sign \
     --signing-key-file ../wallets/${issuer_path}/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx
 
 python3 -c "import time, random; time.sleep(random.uniform(0, 10))"

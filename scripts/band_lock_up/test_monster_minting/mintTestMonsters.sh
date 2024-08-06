@@ -7,7 +7,7 @@ tkn() {
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../../data/path_to_socket.sh)
 cli=$(cat ../../data/path_to_cli.sh)
-testnet_magic=$(cat ../../data/testnet.magic)
+network=$(cat ../../data/network.sh)
 
 # minting policy
 mint_path1="./policy1.script"
@@ -16,13 +16,10 @@ mint_path2="./policy2.script"
 batcher_address=$(cat ../../wallets/batcher-wallet/payment.addr)
 batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../../wallets/batcher-wallet/payment.vkey)
 
-policy_id1=$(cardano-cli transaction policyid --script-file ${mint_path1})
-policy_id2=$(cardano-cli transaction policyid --script-file ${mint_path2})
+policy_id1=$(${cli} transaction policyid --script-file ${mint_path1})
+policy_id2=$(${cli} transaction policyid --script-file ${mint_path2})
 
 # assets
-# token_name1=$(python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))")
-# token_name2=$(python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))")
-
 mint_asset1="
 1 ${policy_id1}.44618a67$(tkn) + 
 1 ${policy_id1}.45b555bd$(tkn) + 
@@ -63,7 +60,7 @@ echo "Mint OUTPUT: "${batcher_address_out}
 #
 echo -e "\033[0;36m Gathering User UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${batcher_address} \
     --out-file ../../tmp/batcher_utxo.json
 
@@ -77,7 +74,7 @@ TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../../tmp/bat
 batcher_tx_in=${TXIN::-8}
 
 # slot contraints
-slot=$(${cli} query tip --testnet-magic ${testnet_magic} | jq .slot)
+slot=$(${cli} query tip ${network} | jq .slot)
 current_slot=$(($slot - 1))
 final_slot=$(($slot + 2500))
 
@@ -94,7 +91,7 @@ FEE=$(${cli} transaction build \
     --mint-script-file ${mint_path1} \
     --mint-script-file ${mint_path2} \
     --mint="${minted_assets}" \
-    --testnet-magic ${testnet_magic})
+    ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
@@ -108,14 +105,14 @@ ${cli} transaction sign \
     --signing-key-file ../../wallets/batcher-wallet/payment.skey \
     --tx-body-file ../../tmp/tx.draft \
     --out-file ../../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../../tmp/tx.signed)
 echo "Tx Hash:" $tx

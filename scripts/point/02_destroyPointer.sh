@@ -3,7 +3,7 @@ set -e
 
 export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
-testnet_magic=$(cat ../data/testnet.magic)
+network=$(cat ../data/network.sh)
 
 burnAmt=0
 # update the starting lock time
@@ -11,7 +11,7 @@ variable=${burnAmt}; jq --argjson variable "$variable" '.fields[0].int=$variable
 mv ../data/mint/burn-redeemer-new.json ../data/mint/burn-redeemer.json
 
 # get params
-${cli} query protocol-parameters --testnet-magic ${testnet_magic} --out-file ../tmp/protocol.json
+${cli} query protocol-parameters ${network} --out-file ../tmp/protocol.json
 
 #
 newm_address=$(cat ../wallets/newm-wallet/payment.addr)
@@ -37,7 +37,7 @@ token_name=$(cat ../tmp/pointer.token)
 
 echo -e "\033[0;36m Gathering NEWM UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${newm_address} \
     --out-file ../tmp/newm_utxo.json
 
@@ -58,7 +58,7 @@ echo $BURN_ASSET
 #
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
 ${cli} query utxo \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
 TXNS=$(jq length ../tmp/collat_utxo.json)
@@ -87,7 +87,7 @@ FEE=$(${cli} transaction build \
     --mint-plutus-script-v2 \
     --policy-id="${policy_id}" \
     --mint-reference-tx-in-redeemer-file ../data/mint/burn-redeemer.json \
-    --testnet-magic ${testnet_magic})
+    ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
@@ -102,14 +102,14 @@ ${cli} transaction sign \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
-    --testnet-magic ${testnet_magic}
+    ${network}
 #    
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
-    --testnet-magic ${testnet_magic} \
+    ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(cardano-cli transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx
