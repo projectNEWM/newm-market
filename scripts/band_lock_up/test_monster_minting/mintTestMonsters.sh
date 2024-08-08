@@ -107,7 +107,7 @@ ${cli} transaction sign \
     --out-file ../../tmp/tx.signed \
     ${network}
 #    
-exit
+# exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
 ${cli} transaction submit \
