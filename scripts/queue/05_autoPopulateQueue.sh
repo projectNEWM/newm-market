@@ -18,7 +18,7 @@ buyer_address=$(cat ../wallets/${buyer_path}/payment.addr)
 buyer_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${buyer_path}/payment.vkey)
 
 max_bundle_size=$(jq -r '.fields[3].int' ../data/sale/sale-datum.json)
-bundleSize=$(python3 -c "from random import randint; print(randint(1, 4000000))")
+bundleSize=$(python3 -c "from random import randint; print(randint(1, 1000000))")
 
 
 variable=${buyer_pkh}; jq --arg variable "$variable" '.fields[0].fields[0].bytes=$variable' ../data/queue/queue-datum.json > ../data/queue/queue-datum-new.json
