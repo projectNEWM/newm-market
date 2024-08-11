@@ -15,7 +15,6 @@ script_address=$(${cli} address build --payment-script-file ${vault_script_path}
 # collat, buyer, reference
 batcher_path="batcher-wallet"
 batcher_address=$(cat ../wallets/${batcher_path}/payment.addr)
-batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${batcher_path}/payment.vkey)
 
 # this assumes no entry tokens
 script_address_out="${script_address} + 10000000"
@@ -47,6 +46,12 @@ FEE=$(${cli} transaction build \
     --tx-in ${batcher_tx_in} \
     --tx-out="${script_address_out}" \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
+    --tx-out="${script_address_out}" \
+    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
+    --tx-out="${script_address_out}" \
+    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
+    --tx-out="${script_address_out}" \
+    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
@@ -54,7 +59,7 @@ IFS=' ' read -ra FEE <<< "${VALUE[1]}"
 FEE=${FEE[1]}
 echo -e "\033[1;32m Fee: \033[0m" $FEE
 #
-# exit
+exit
 #
 echo -e "\033[0;36m Signing \033[0m"
 ${cli} transaction sign \

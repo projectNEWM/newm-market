@@ -12,6 +12,7 @@ sender_address=$(cat ${sender_path}payment.addr)
 # receiver_address=$(cat wallets/seller-wallet/payment.addr)
 # receiver_address=${sender_address}
 receiver_address=$(jq -r '.starterChangeAddr' ../config.json)
+# receiver_address=""
 #
 # exit
 #
