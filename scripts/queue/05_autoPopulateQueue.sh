@@ -32,7 +32,14 @@ bundle_pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
 bundle_tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
 
 # point to a sale
-pointer_tkn=$(cat ../tmp/pointer.token)
+pointer_tkn=$(python3 -c "
+from random import choice
+tkns = [
+    "",
+]
+print(choice(tkn))
+")
+# pointer_tkn=$(cat ../tmp/pointer.token)
 
 variable=${pointer_tkn}; jq --arg variable "$variable" '.fields[3].bytes=$variable' ../data/queue/queue-datum.json > ../data/queue/queue-datum-new.json
 mv ../data/queue/queue-datum-new.json ../data/queue/queue-datum.json
