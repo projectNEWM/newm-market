@@ -44,13 +44,6 @@ TXIN=$(jq -r --arg alltxin "" --arg tkn "${tkn}" 'to_entries[] | select(.value.i
 script_tx_in=${TXIN::-8}
 echo $script_tx_in
 
-# exit
-LOVELACE_VALUE=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${pid}" --arg tkn "${tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value.lovelace' ../tmp/script_utxo.json)
-echo LOVELACE: $LOVELACE_VALUE
-CURRENT_VALUE=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${pid}" --arg tkn "${tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value[$pid][$tkn]' ../tmp/script_utxo.json)
-echo BUNDLE: $CURRENT_VALUE
-returning_asset="${CURRENT_VALUE} ${pid}.${tkn}"
-
 POINTER_VALUE=$(jq -r --arg alltxin "" --arg artistPkh "${artist_pkh}" --arg pid "${pointer_pid}" --arg tkn "${pointer_tkn}" 'to_entries[] | select(.value.value[$pid] // empty | keys[0] == $tkn) | .value.value[$pid][$tkn]' ../tmp/script_utxo.json)
 pointer_asset="-${POINTER_VALUE} ${pointer_pid}.${pointer_tkn}"
 echo $pointer_asset
@@ -58,14 +51,6 @@ if [ -z "$POINTER_VALUE" ]; then
     echo "No pointer found."
     exit 1
 fi
-
-if [[ CURRENT_VALUE -le 0 ]] ; then
-    artist_address_out="${artist_address} + ${LOVELACE_VALUE}"
-else
-    artist_address_out="${artist_address} + ${LOVELACE_VALUE} + ${returning_asset}"
-fi
-
-echo "Return OUTPUT: "${artist_address_out}
 #
 # exit
 #
@@ -99,8 +84,6 @@ script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/sale-reference-utxo.s
 data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
 pointer_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
 
-
-# exit
 echo -e "\033[0;36m Building Tx \033[0m"
 FEE=$(${cli} transaction build \
     --babbage-era \

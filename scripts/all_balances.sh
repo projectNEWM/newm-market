@@ -37,7 +37,6 @@ ref_script_address=$(${cli} address build --payment-script-file ${ref_script_pat
 #
 ${cli} query protocol-parameters ${network} --out-file ./tmp/protocol.json
 ${cli} query tip ${network} | jq
-${cli} query tx-mempool info ${network} | jq
 
 #
 echo -e "\033[1;35m\nReference Script Address: \033[0m"
