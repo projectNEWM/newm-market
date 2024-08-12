@@ -19,13 +19,25 @@ buyer_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/$
 
 bundleSize=$(python3 -c "from random import randint; print(randint(1, 2000000))")
 
-
 variable=${buyer_pkh}; jq --arg variable "$variable" '.fields[0].fields[0].bytes=$variable' ../data/queue/queue-datum.json > ../data/queue/queue-datum-new.json
 mv ../data/queue/queue-datum-new.json ../data/queue/queue-datum.json
 
 # update bundle size
 variable=${bundleSize}; jq --argjson variable "$variable" '.fields[1].int=$variable' ../data/queue/queue-datum.json > ../data/queue/queue-datum-new.json
 mv ../data/queue/queue-datum-new.json ../data/queue/queue-datum.json
+
+pointer_tkn=$(python3 -c "
+import json; from random import choice;
+file_path='../data/sale/multi-sale-data.json'
+print(choice(list((lambda f: json.load(f))(open(file_path)).keys())))
+")
+
+
+exit
+
+# update token info
+bundle_pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
+bundle_tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
 
 # point to a sale
 pointer_tkn=$(cat ../tmp/pointer.token)
