@@ -17,7 +17,7 @@ buyer_path="buyer1-wallet"
 buyer_address=$(cat ../wallets/${buyer_path}/payment.addr)
 buyer_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${buyer_path}/payment.vkey)
 
-bundleSize=$(python3 -c "from random import randint; print(randint(1, 2000000))")
+bundleSize=$(python3 -c "from random import randint; print(randint(1, 100000))")
 
 variable=${buyer_pkh}; jq --arg variable "$variable" '.fields[0].fields[0].bytes=$variable' ../data/queue/queue-datum.json > ../data/queue/queue-datum-new.json
 mv ../data/queue/queue-datum-new.json ../data/queue/queue-datum.json
@@ -32,15 +32,10 @@ file_path='../data/sale/multi-sale-data.json'
 print(choice(list((lambda f: json.load(f))(open(file_path)).keys())))
 ")
 
+echo -e "\033[0;36m\nPointer: ${pointer_tkn}\n\033[0m"
 
-exit
+echo "N:" ${bundleSize}
 
-# update token info
-bundle_pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
-bundle_tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
-
-# point to a sale
-pointer_tkn=$(cat ../tmp/pointer.token)
 
 variable=${pointer_tkn}; jq --arg variable "$variable" '.fields[3].bytes=$variable' ../data/queue/queue-datum.json > ../data/queue/queue-datum-new.json
 mv ../data/queue/queue-datum-new.json ../data/queue/queue-datum.json
@@ -82,24 +77,24 @@ echo Profit Amt: ${profit_amt}
 profit="${profit_amt} ${profit_pid}.${profit_tkn}"
 
 # the cost part
-cost_pid=$(jq -r '.fields[2].fields[0].bytes' ../data/sale/sale-datum.json)
+cost_pid=$(jq -r --arg tkn "$pointer_tkn" '.[$tkn].cost_pid' ../data/sale/multi-sale-data.json)
 
 if [ "$cost_pid" = "555344" ]; then
-    usd_amt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
+    usd_amt=$(jq -r --arg tkn "$pointer_tkn" '.[$tkn].cost_amt' ../data/sale/multi-sale-data.json)
     cost_amt=$(python -c "p = ${usd_amt} // ${current_price};print(p)")
     pay_amt=$((${bundleSize} * ${cost_amt}))
     cost="${pay_amt} ${profit_pid}.${profit_tkn}"
 else
-    cost_tkn=$(jq -r '.fields[2].fields[1].bytes' ../data/sale/sale-datum.json)
-    cost_amt=$(jq -r '.fields[2].fields[2].int' ../data/sale/sale-datum.json)
+    cost_tkn=$(jq -r --arg tkn "$pointer_tkn" '.[$tkn].cost_tkn' ../data/sale/multi-sale-data.json)
+    cost_amt=$(jq -r --arg tkn "$pointer_tkn" '.[$tkn].cost_amt' ../data/sale/multi-sale-data.json)
     pay_amt=$((${bundleSize} * ${cost_amt}))
     cost="${pay_amt} ${cost_pid}.${cost_tkn}"
 fi
 
-echo Cost: ${pay_amt}
-
+echo Cost: ${cost}
+#
 # exit
-
+#
 extra_pct=40 # 100 / 40 = 2.5% change
 extra_amt=$(python -c "nc = ${pay_amt};p = ${profit_amt};e = (nc + p)//${extra_pct}; print(e)")
 echo Extra Amt: ${extra_amt}
@@ -173,5 +168,5 @@ ${cli} transaction submit \
 tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx
 
-python3 -c "import time, random; time.sleep(random.uniform(0, 5))"
-./05_autoPopulateQueue.sh ${tx}#1 $return_lovelace $return_newm
+python3 -c "import time, random; time.sleep(random.uniform(0, 10))"
+./07_autoPopulateMultiQueue.sh ${tx}#1 $return_lovelace $return_newm
