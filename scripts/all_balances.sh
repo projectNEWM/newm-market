@@ -6,6 +6,9 @@ export CARDANO_NODE_SOCKET_PATH=$(cat ./data/path_to_socket.sh)
 cli=$(cat ./data/path_to_cli.sh)
 network=$(cat ./data/network.sh)
 
+mkdir -p ./tmp
+${cli} query protocol-parameters ${network} --out-file ./tmp/protocol.json
+
 # staking contract
 stake_script_path="../contracts/stake_contract.plutus"
 
