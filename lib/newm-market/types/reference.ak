@@ -1,6 +1,6 @@
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use aiken/primitive/bytearray
-use cardano/assets.{AssetName, Lovelace, PolicyId, Value}
+use cardano/assets.{AssetName, Lovelace, PolicyId}
 use cardano/certificate.{StakePoolId}
 use types/wallet.{Wallet}
 
@@ -77,8 +77,8 @@ pub type Fees {
 
 /// The tx fee must be less than equal to the upper bound.
 ///
-pub fn valid_tx_fee(fee: Value, upper_bound: Lovelace) -> Bool {
-  assets.lovelace_of(fee) <= upper_bound
+pub fn valid_tx_fee(fee: Lovelace, upper_bound: Lovelace) -> Bool {
+  fee <= upper_bound
 }
 
 /// Assumes a single monster policy id but many monster prefixes. The batcher

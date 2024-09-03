@@ -1,5 +1,21 @@
 # newm-market
 
+##
+
+```rust
+when maybe_datum is {
+  Some(datum) ->
+    if datum is Register {
+      spending.validation(datum, redeemer)?
+    } else {
+      // incorrect data structures should be spendable
+      True
+    }
+  // missing data structures should be spendable
+  None -> True
+}
+```
+
 ## Happy Path Setup
 
 We will need some wallets to run everything.

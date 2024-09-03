@@ -57,12 +57,12 @@ cardano-cli transaction policyid --script-file contracts/stake_contract.plutus >
 cardano-cli stake-address registration-certificate --stake-script-file contracts/stake_contract.plutus --out-file certs/stake.cert
 cardano-cli stake-address delegation-certificate --stake-script-file contracts/stake_contract.plutus --stake-pool-id ${poolId} --out-file certs/deleg.cert
 
-# echo -e "\033[1;33m Convert Sale Contract \033[0m"
-# aiken blueprint apply -o plutus.json -v sale.params "${pid_cbor}"
-# aiken blueprint apply -o plutus.json -v sale.params "${tkn_cbor}"
-# aiken blueprint apply -o plutus.json -v sale.params "${ref_cbor}"
-# aiken blueprint convert -v sale.params > contracts/sale_contract.plutus
-# cardano-cli transaction policyid --script-file contracts/sale_contract.plutus > hashes/sale.hash
+echo -e "\033[1;33m Convert Sale Contract \033[0m"
+aiken blueprint apply -o plutus.json -v sale.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v sale.contract.spend "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v sale.contract.spend "${ref_cbor}"
+aiken blueprint convert -v sale.contract.spend > contracts/sale_contract.plutus
+cardano-cli transaction policyid --script-file contracts/sale_contract.plutus > hashes/sale.hash
 
 # echo -e "\033[1;33m Convert Queue Contract \033[0m"
 # aiken blueprint apply -o plutus.json -v queue.params "${pid_cbor}"
