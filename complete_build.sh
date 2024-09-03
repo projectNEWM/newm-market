@@ -78,12 +78,12 @@ aiken blueprint apply -o plutus.json -v pointer.contract.mint "${ref_cbor}"
 aiken blueprint convert -v pointer.contract.mint > contracts/pointer_contract.plutus
 cardano-cli transaction policyid --script-file contracts/pointer_contract.plutus > hashes/pointer_policy.hash
 
-# echo -e "\033[1;33m Convert Band Lock Contract \033[0m"
-# aiken blueprint apply -o plutus.json -v band.params "${pid_cbor}"
-# aiken blueprint apply -o plutus.json -v band.params "${tkn_cbor}"
-# aiken blueprint apply -o plutus.json -v band.params "${ref_cbor}"
-# aiken blueprint convert -v band.params > contracts/band_lock_contract.plutus
-# cardano-cli transaction policyid --script-file contracts/band_lock_contract.plutus > hashes/band_lock.hash
+echo -e "\033[1;33m Convert Band Lock Contract \033[0m"
+aiken blueprint apply -o plutus.json -v band.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v band.contract.spend "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v band.contract.spend "${ref_cbor}"
+aiken blueprint convert -v band.contract.spend > contracts/band_lock_contract.plutus
+cardano-cli transaction policyid --script-file contracts/band_lock_contract.plutus > hashes/band_lock.hash
 
 # echo -e "\033[1;33m Convert Vault Contract \033[0m"
 # aiken blueprint apply -o plutus.json -v vault.params "${pid_cbor}"
