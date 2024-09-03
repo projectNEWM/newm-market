@@ -1,9 +1,8 @@
-use aiken/bytearray
-use aiken/cbor
-use aiken/dict
-use aiken/list
-use aiken/transaction/value.{AssetName, Value}
-use assist/types/token.{Tokens}
+use aiken/collection/dict
+use aiken/collection/list
+use aiken/primitive/bytearray
+use cardano/assets.{AssetName, Value}
+use types/token.{Tokens}
 
 pub type BandLockUpRedeemer {
   RemoveBand
@@ -12,7 +11,7 @@ pub type BandLockUpRedeemer {
   BurnBand(ByteArray)
 }
 
-/// Token names are from the value or total value. Monster token names are the
+/// Token names are from the value or total assets. Monster token names are the
 /// official prefixes for the monster nfts.
 ///
 pub fn has_correct_tokens(
@@ -29,7 +28,6 @@ pub fn has_correct_tokens(
         has_correct_tokens(tkns_from_value, prefixes)
       } else {
         // missing something from the set
-        trace cbor.diagnostic(prefix)
         False
       }
   }
@@ -41,10 +39,7 @@ fn do_has_correct_tokens(
 ) -> Bool {
   when tkns_from_value is {
     // something wasn't found
-    [] -> {
-      trace cbor.diagnostic(tkns_from_value)
-      False
-    }
+    [] -> False
     [tkn, ..tkns] ->
       if prefix_in_token_name(prefix, tkn) {
         // found it
@@ -130,71 +125,123 @@ test destruct_value_into_two_lists() {
       #"cafe", #"ecaf", #"feca", #"afec", #"afce", #"eafc", #"ceaf", #"fcea",
     ]
   let this_value: Value =
-    value.from_asset_list(
+    assets.from_asset_list(
       [
-        Pair(#"7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3",
-        [
-          Pair(#"aabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"abacbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"abcabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"acabbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"afecbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"bacabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"bcaabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"caabbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"cababeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"cafebeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"ecafbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"fecabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-        ]),
-        Pair(#"85510e059114a9dcdf7c1d842a1b8fdfd2438cd31ef1b3edcf6d5d67",
-        [
-          Pair(#"adefacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-          Pair(#"adfeacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-          Pair(#"afcebeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"ceafbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"defaacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-          Pair(#"dfeaacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-          Pair(#"eadfacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-          Pair(#"eafcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"efadacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-          Pair(#"fadeacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-          Pair(#"fceabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
-          1),
-          Pair(#"feadacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
-          1),
-        ]),
+        Pair(
+          #"7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3",
+          [
+            Pair(
+              #"aabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"abacbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"abcabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"acabbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"afecbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"bacabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"bcaabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"caabbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"cababeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"cafebeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"ecafbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"fecabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+          ],
+        ),
+        Pair(
+          #"85510e059114a9dcdf7c1d842a1b8fdfd2438cd31ef1b3edcf6d5d67",
+          [
+            Pair(
+              #"adefacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+            Pair(
+              #"adfeacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+            Pair(
+              #"afcebeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"ceafbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"defaacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+            Pair(
+              #"dfeaacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+            Pair(
+              #"eadfacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+            Pair(
+              #"eafcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"efadacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+            Pair(
+              #"fadeacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+            Pair(
+              #"fceabeeffacecafeaabcbeeffacecafeaabcbeeffacecafeaabcbeeffacecafe",
+              1,
+            ),
+            Pair(
+              #"feadacabbeeffaceadefacabbeeffaceadefacabbeeffaceadefacabbeefface",
+              1,
+            ),
+          ],
+        ),
       ],
     )
   let token_names1: List<AssetName> =
     this_value
-      |> value.tokens(#"7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3")
+      |> assets.tokens(#"7d878696b149b529807aa01b8e20785e0a0d470c32c13f53f08a55e3")
       |> dict.keys()
   let token_names2: List<AssetName> =
     this_value
-      |> value.tokens(#"85510e059114a9dcdf7c1d842a1b8fdfd2438cd31ef1b3edcf6d5d67")
+      |> assets.tokens(#"85510e059114a9dcdf7c1d842a1b8fdfd2438cd31ef1b3edcf6d5d67")
       |> dict.keys()
   let token_names: List<AssetName> = list.concat(token_names1, token_names2)
   has_correct_tokens(token_names, prefixes)

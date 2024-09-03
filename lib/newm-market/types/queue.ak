@@ -1,11 +1,11 @@
-use aiken/bytearray
-use aiken/dict
-use aiken/list
-use aiken/transaction.{Input, OutputReference}
-use aiken/transaction/value.{AssetName, PolicyId, Value}
-use assist/types/token.{Token}
-use assist/types/wallet.{Wallet}
+use aiken/collection/dict
+use aiken/collection/list
+use aiken/primitive/bytearray
+use cardano/assets.{AssetName, PolicyId, Value}
+use cardano/transaction.{Input, OutputReference}
 use newm_market/constants.{batcher_token_name, batcher_token_name_length}
+use types/token.{Token}
+use types/wallet.{Wallet}
 
 // the queue datum
 pub type QueueDatum {
@@ -21,7 +21,7 @@ pub fn prove_existence_of_incentive(
 ) -> Bool {
   and {
     // The incentive must exist
-    value.quantity_of(validating_value, the_incentive.pid, the_incentive.tkn) >= the_incentive.amt,
+    assets.quantity_of(validating_value, the_incentive.pid, the_incentive.tkn) >= the_incentive.amt,
     // the amount must be non-negative
     the_incentive.amt >= 0,
   }
@@ -39,7 +39,7 @@ pub fn prove_existence_of_batcher(
       if and {
         input.output_reference != queue_out_ref,
         input.output_reference != sale_out_ref,
-        value.tokens(input.output.value, pid)
+        assets.tokens(input.output.value, pid)
           |> dict.keys()
           |> list.any(
               fn(tkn) {

@@ -1,19 +1,18 @@
-use aiken/bytearray
-use aiken/transaction/credential.{PoolId}
-use aiken/transaction/value.{AssetName, PolicyId, Value}
-use assist/types/hashes.{PublicKeyHash, ValidatorHash}
-use assist/types/wallet.{Wallet}
-use newm_market/constants.{Lovelace}
+use aiken/crypto.{ScriptHash, VerificationKeyHash}
+use aiken/primitive/bytearray
+use cardano/assets.{AssetName, Lovelace, PolicyId, Value}
+use cardano/certificate.{StakePoolId}
+use types/wallet.{Wallet}
 
 // staking info
 pub type Staking {
-  pool_id: PoolId,
+  pool_id: StakePoolId,
   reward_wallet: Wallet,
 }
 
 // keepers are like admins
 pub type Keepers {
-  pkhs: List<PublicKeyHash>,
+  pkhs: List<VerificationKeyHash>,
   threshold: Int,
 }
 
@@ -26,7 +25,7 @@ pub fn is_valid_keepers(keepers: Keepers) -> Bool {
 }
 
 fn do_is_valid_keepers(
-  keepers: List<PublicKeyHash>,
+  keepers: List<VerificationKeyHash>,
   counter: Int,
   threshold: Int,
 ) -> Bool {
@@ -48,11 +47,11 @@ fn do_is_valid_keepers(
 
 // contract validator hashes
 pub type Contracts {
-  sale: ValidatorHash,
-  queue: ValidatorHash,
-  band: ValidatorHash,
-  vault: ValidatorHash,
-  stake: ValidatorHash,
+  sale: ScriptHash,
+  queue: ScriptHash,
+  band: ScriptHash,
+  vault: ScriptHash,
+  stake: ScriptHash,
 }
 
 /// All the contract validator hashes must be length 28. The stake validator
@@ -79,7 +78,7 @@ pub type Fees {
 /// The tx fee must be less than equal to the upper bound.
 ///
 pub fn valid_tx_fee(fee: Value, upper_bound: Lovelace) -> Bool {
-  value.lovelace_of(fee) <= upper_bound
+  assets.lovelace_of(fee) <= upper_bound
 }
 
 /// Assumes a single monster policy id but many monster prefixes. The batcher
@@ -96,7 +95,7 @@ pub type BatcherData {
 /// id and token name, and the profit margin.
 ///
 pub type ProfitData {
-  feed_vkh: ValidatorHash,
+  feed_vkh: ScriptHash,
   feed_pid: PolicyId,
   feed_tkn: AssetName,
   profit_pid: PolicyId,
@@ -106,7 +105,7 @@ pub type ProfitData {
 
 /// The reference data to be used inside other contracts.
 pub type ReferenceDatum {
-  hot_key: PublicKeyHash,
+  hot_key: VerificationKeyHash,
   keepers: Keepers,
   staking: Staking,
   contracts: Contracts,
