@@ -1,6 +1,14 @@
-# newm-market
+# NEWM Marketplace
 
-## Happy Path Setup
+
+
+## NEWM Monster Band Lock Up
+
+## Setting Up Vault UTxOs
+
+## Quick Full Happy Path Setup
+
+Following this for setting up your own version of the entire marketplace.
 
 We will need some wallets to run everything.
 
