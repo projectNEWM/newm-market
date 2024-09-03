@@ -7,13 +7,13 @@ network=$(cat ../data/network.sh)
 
 # staking contract
 stake_script_path="../../contracts/stake_contract.plutus"
-stake_address=$(${cli} stake-address build --stake-script-file ${stake_script_path} ${network})
+stake_address=$(${cli} conway stake-address build --stake-script-file ${stake_script_path} ${network})
 
 echo "Stake Address: " $stake_address
 
 # collat
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 # reward fee payer
 newm_address=$(cat ../wallets/newm-wallet/payment.addr)
@@ -22,14 +22,14 @@ newm_address=$(cat ../wallets/newm-wallet/payment.addr)
 reward_address=$(cat ../wallets/reward-wallet/payment.addr)
 
 # find rewards
-rewardBalance=$(${cli} query stake-address-info \
+rewardBalance=$(${cli} conway query stake-address-info \
     ${network} \
     --address ${stake_address} | jq -r ".[0].rewardAccountBalance")
 echo rewardBalance: $rewardBalance
 
 if [ "$rewardBalance" -eq 0 ]; then
    echo -e "\n \033[0;31m No Rewards Found At ${stake_address} \033[0m \n";
-   exit;
+#    exit;
 fi
 
 withdrawalString="${stake_address}+${rewardBalance}"
@@ -38,7 +38,7 @@ echo "Withdraw: " $withdrawalString
 # exit
 #
 echo -e "\033[0;36m Gathering UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${newm_address} \
     --out-file ../tmp/newm_utxo.json
@@ -54,7 +54,7 @@ seller_tx_in=${TXIN::-8}
 
 # collat info
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -66,12 +66,11 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/stake-reference-utxo.signed)
-data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/stake-reference-utxo.signed)
+data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${newm_address} \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
@@ -79,7 +78,7 @@ FEE=$(${cli} transaction build \
     --tx-in ${seller_tx_in} \
     --withdrawal ${withdrawalString} \
     --withdrawal-tx-in-reference="${script_ref_utxo}#1" \
-    --withdrawal-plutus-script-v2 \
+    --withdrawal-plutus-script-v3 \
     --withdrawal-reference-tx-in-redeemer-file ../data/staking/withdraw-redeemer.json \
     --tx-out="${reward_address}+${rewardBalance}" \
     --required-signer-hash ${collat_pkh} \
@@ -93,7 +92,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/newm-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
@@ -103,9 +102,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

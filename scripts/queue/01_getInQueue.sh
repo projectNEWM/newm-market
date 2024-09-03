@@ -10,12 +10,12 @@ stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 queue_script_path="../../contracts/queue_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
+script_address=$(${cli} conway address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # collat, buyer, reference
 buyer_path="buyer1-wallet"
 buyer_address=$(cat ../wallets/${buyer_path}/payment.addr)
-buyer_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${buyer_path}/payment.vkey)
+buyer_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/${buyer_path}/payment.vkey)
 
 max_bundle_size=$(jq -r '.fields[3].int' ../data/sale/sale-datum.json)
 if [[ $# -eq 0 ]] ; then
@@ -57,7 +57,7 @@ feed_pid=$(jq -r ' .feedPid' ../../config.json)
 feed_tkn=$(jq -r '.feedTkn' ../../config.json)
 
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${feed_addr} \
     ${network} \
     --out-file ../tmp/feed_utxo.json
@@ -119,8 +119,7 @@ worst_case_token="9223372036854775807 015d83f25700c83d708fbf8ad57783dc257b01a932
 + 9223372036854775807 115d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d.015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d00000000
 + 9223372036854775807 215d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d.015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d00000000
 "
-min_utxo_value=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
+min_utxo_value=$(${cli} conway transaction calculate-min-required-utxo \
         --protocol-params-file ../tmp/protocol.json \
         --tx-out-inline-datum-file ../data/queue/queue-datum.json \
         --tx-out="${script_address} + 5000000 + ${worst_case_token}" | tr -dc '0-9')
@@ -132,7 +131,7 @@ echo "Script OUTPUT: "${script_address_out}
 # exit
 #
 echo -e "\033[0;36m Gathering Buyer UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${buyer_address} \
     --out-file ../tmp/buyer_utxo.json
@@ -147,8 +146,7 @@ buyer_tx_in=${TXIN::-8}
 
 # exit
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${buyer_address} \
     --tx-in ${buyer_tx_in} \
@@ -164,7 +162,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/${buyer_path}/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
@@ -173,9 +171,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

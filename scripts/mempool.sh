@@ -7,7 +7,7 @@ cli=$(cat ./data/path_to_cli.sh)
 network=$(cat ./data/network.sh)
 
 #
-${cli} query protocol-parameters ${network} --out-file ./tmp/protocol.json
-${cli} query tip ${network} | jq
-${cli} query tx-mempool info ${network} | jq
-${cli} query tx-mempool next-tx ${network} | jq
+${cli} conway query protocol-parameters ${network} --out-file ./tmp/protocol.json
+${cli} conway query tip ${network} | jq
+${cli} conway query tx-mempool info ${network} | jq
+${cli} conway query tx-mempool next-tx ${network} | jq

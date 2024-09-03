@@ -10,7 +10,7 @@ stake_script_path="../../contracts/stake_contract.plutus"
 
 # vault contract
 vault_script_path="../../contracts/vault_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} ${network})
+script_address=$(${cli} conway address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # collat, buyer, reference
 batcher_path="batcher-wallet"
@@ -24,7 +24,7 @@ echo "Script OUTPUT: "${script_address_out}
 # exit
 #
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${batcher_address} \
     --out-file ../tmp/batcher_utxo.json
@@ -39,8 +39,7 @@ batcher_tx_in=${TXIN::-8}
 
 # exit
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${batcher_address} \
     --tx-in ${batcher_tx_in} \
@@ -62,7 +61,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/${batcher_path}/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
@@ -71,9 +70,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

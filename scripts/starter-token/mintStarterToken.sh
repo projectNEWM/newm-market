@@ -14,7 +14,7 @@ mint_path1="./policy.script"
 
 starter_path="../wallets/starter-wallet/"
 starter_address=$(cat ${starter_path}payment.addr)
-starter_pkh=$(${cli} address key-hash --payment-verification-key-file ${starter_path}payment.vkey)
+starter_pkh=$(${cli} conway address key-hash --payment-verification-key-file ${starter_path}payment.vkey)
 
 python -c "
 import json; data=json.load(open('./policy.script', 'r'));
@@ -22,13 +22,12 @@ prev_slot = data['scripts'][0]['slot'];
 data['scripts'][0]['slot'] = prev_slot + 1;
 json.dump(data, open('./policy.script', 'w'), indent=2)
 "
-policy_id1=$(${cli} transaction policyid --script-file ${mint_path1})
+policy_id1=$(${cli} conway transaction policyid --script-file ${mint_path1})
 token_name1=$(python3 -c "import secrets; print(''.join([secrets.choice('0123456789abcdef') for _ in range(64)]))")
 mint_asset1="1 ${policy_id1}.$(tkn)"
 
 # mint utxo
-utxo_value=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
+utxo_value=$(${cli} conway transaction calculate-min-required-utxo \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out="${starter_address} + 2000000 + ${mint_asset1}" | tr -dc '0-9')
 
@@ -48,7 +47,7 @@ fi
 # exit
 #
 echo -e "\033[0;36m Gathering User UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${starter_address} \
     --out-file ../tmp/starter_utxo.json
@@ -63,14 +62,13 @@ TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/starte
 starter_tx_in=${TXIN::-8}
 
 # slot contraints
-slot=$(${cli} query tip ${network} | jq .slot)
+slot=$(${cli} conway query tip ${network} | jq .slot)
 current_slot=$(($slot - 1))
 final_slot=$(($slot + 600))
 
 # exit
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --invalid-before ${current_slot} \
     --invalid-hereafter ${final_slot} \
@@ -89,7 +87,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ${starter_path}payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
@@ -98,9 +96,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

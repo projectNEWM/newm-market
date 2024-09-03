@@ -3,14 +3,14 @@ use cardano/address.{Address, Credential, Script}
 use cardano/addresses
 use cardano/assets.{AssetName, Lovelace, PolicyId}
 use cardano/certificate.{
-  Certificate, DelegateBlockProduction, DelegateCredential,
+  Certificate, DelegateBlockProduction, DelegateCredential, RegisterCredential,
 }
 use cardano/datum
 use cardano/transaction.{Input, Transaction}
 use cardano/tx
 use cardano/value
 use newm_market/types/reference.{ReferenceDatum}
-use newm_market/types/staking.{Delegate, StakingRedeemer, Withdraw}
+use newm_market/types/staking.{Delegate, Register, StakingRedeemer, Withdraw}
 use validation/find
 use validation/payout
 
@@ -47,30 +47,44 @@ validator contract(
     certificate: Certificate,
     transaction: Transaction,
   ) {
-    let Transaction { reference_inputs, extra_signatories, .. } = transaction
-    // get reference stuff
-    let ref_addr: Address = address.from_script(ref_hash)
-    let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
-    expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
-    expect Delegate(script_hash) = redeemer
-    let new_delegation: Certificate =
-      DelegateCredential {
-        credential: Script(script_hash),
-        delegate: DelegateBlockProduction {
-          stake_pool: ref_datum.staking.pool_id,
-        },
+    when redeemer is {
+      Delegate(script_hash) -> {
+        let Transaction { reference_inputs, extra_signatories, .. } =
+          transaction
+        // get reference stuff
+        let ref_addr: Address = address.from_script(ref_hash)
+        let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
+        expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+        let new_delegation: Certificate =
+          DelegateCredential {
+            credential: Script(script_hash),
+            delegate: DelegateBlockProduction {
+              stake_pool: ref_datum.staking.pool_id,
+            },
+          }
+        and {
+          // data reference must hold correct token
+          value.prove_exact_nft(
+            ref_input.output.value,
+            starter_pid,
+            starter_tkn,
+          )?,
+          // The only cert is for new delegation
+          (certificate == new_delegation)?,
+          // only keepers can update the data
+          tx.verify_multisig(
+            extra_signatories,
+            ref_datum.keepers.pkhs,
+            ref_datum.keepers.threshold,
+          )?,
+        }
       }
-    and {
-      // data reference must hold correct token
-      value.prove_exact_nft(ref_input.output.value, starter_pid, starter_tkn)?,
-      // The only cert is for new delegation
-      (certificate == new_delegation)?,
-      // only keepers can update the data
-      tx.verify_multisig(
-        extra_signatories,
-        ref_datum.keepers.pkhs,
-        ref_datum.keepers.threshold,
-      )?,
+      Register(script_hash) -> {
+        let new_delegation: Certificate =
+          RegisterCredential { credential: Script(script_hash), deposit: Never }
+        (certificate == new_delegation)?
+      }
+      _ -> fail @"Incorrect Publish Redeemer"
     }
   }
 

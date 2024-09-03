@@ -11,24 +11,24 @@ variable=${burnAmt}; jq --argjson variable "$variable" '.fields[0].int=$variable
 mv ../data/mint/burn-redeemer-new.json ../data/mint/burn-redeemer.json
 
 # get params
-${cli} query protocol-parameters ${network} --out-file ../tmp/protocol.json
+${cli} conway query protocol-parameters ${network} --out-file ../tmp/protocol.json
 
 #
 newm_address=$(cat ../wallets/newm-wallet/payment.addr)
-newm_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
+newm_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
 
 #
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 # #
 # artist_address=$(cat ../wallets/artist-wallet/payment.addr)
-# artist_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
+# artist_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
 
 # multisig
-keeper1_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
-keeper2_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
-keeper3_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
+keeper1_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
+keeper2_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
+keeper3_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
 
 
 # the minting script policy
@@ -36,7 +36,7 @@ policy_id=$(cat ../../hashes/pointer_policy.hash)
 token_name=$(cat ../tmp/pointer.token)
 
 echo -e "\033[0;36m Gathering NEWM UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${newm_address} \
     --out-file ../tmp/newm_utxo.json
@@ -57,7 +57,7 @@ echo $BURN_ASSET
 # exit
 #
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -68,13 +68,12 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
-data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
+data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 # Add metadata to this build function for nfts with data
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --protocol-params-file ../tmp/protocol.json \
     --out-file ../tmp/tx.draft \
     --change-address ${newm_address} \
@@ -84,7 +83,7 @@ FEE=$(${cli} transaction build \
     --required-signer-hash ${collat_pkh} \
     --mint="${BURN_ASSET}" \
     --mint-tx-in-reference="${script_ref_utxo}#1" \
-    --mint-plutus-script-v2 \
+    --mint-plutus-script-v3 \
     --policy-id="${policy_id}" \
     --mint-reference-tx-in-redeemer-file ../data/mint/burn-redeemer.json \
     ${network})
@@ -97,7 +96,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/newm-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
@@ -107,9 +106,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx
