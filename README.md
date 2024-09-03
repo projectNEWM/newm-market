@@ -5,8 +5,8 @@
 ```rust
 when maybe_datum is {
   Some(datum) ->
-    if datum is Register {
-      spending.validation(datum, redeemer)?
+    if datum is Datum{
+      True
     } else {
       // incorrect data structures should be spendable
       True

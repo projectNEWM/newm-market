@@ -85,139 +85,124 @@ aiken blueprint apply -o plutus.json -v band.contract.spend "${ref_cbor}"
 aiken blueprint convert -v band.contract.spend > contracts/band_lock_contract.plutus
 cardano-cli transaction policyid --script-file contracts/band_lock_contract.plutus > hashes/band_lock.hash
 
-# echo -e "\033[1;33m Convert Vault Contract \033[0m"
-# aiken blueprint apply -o plutus.json -v vault.params "${pid_cbor}"
-# aiken blueprint apply -o plutus.json -v vault.params "${tkn_cbor}"
-# aiken blueprint apply -o plutus.json -v vault.params "${ref_cbor}"
-# aiken blueprint convert -v vault.params > contracts/vault_contract.plutus
-# cardano-cli transaction policyid --script-file contracts/vault_contract.plutus > hashes/vault.hash
+echo -e "\033[1;33m Convert Vault Contract \033[0m"
+aiken blueprint apply -o plutus.json -v vault.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v vault.contract.spend "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v vault.contract.spend "${ref_cbor}"
+aiken blueprint convert -v vault.contract.spend > contracts/vault_contract.plutus
+cardano-cli transaction policyid --script-file contracts/vault_contract.plutus > hashes/vault.hash
 
-# echo -e "\033[1;33m Convert Batcher Token Contract \033[0m"
-# aiken blueprint apply -o plutus.json -v batcher.params "${ref_cbor}"
-# aiken blueprint convert -v batcher.params > contracts/batcher_contract.plutus
-# cardano-cli transaction policyid --script-file contracts/batcher_contract.plutus > hashes/batcher.hash
+echo -e "\033[1;33m Convert Batcher Token Contract \033[0m"
+aiken blueprint apply -o plutus.json -v batcher.contract.mint "${ref_cbor}"
+aiken blueprint convert -v batcher.contract.mint > contracts/batcher_contract.plutus
+cardano-cli transaction policyid --script-file contracts/batcher_contract.plutus > hashes/batcher.hash
 
-# echo -e "\033[1;33m Convert Testing Purpose Only C3 Oracle Contract \033[0m"
+###############################################################################
+############## DATUM AND REDEEMER STUFF #######################################
+###############################################################################
+echo -e "\033[1;33m Updating Reference Datum \033[0m"
+# keepers
+pkh1=$(cat_file_or_empty ./scripts/wallets/keeper1-wallet/payment.hash)
+pkh2=$(cat_file_or_empty ./scripts/wallets/keeper2-wallet/payment.hash)
+pkh3=$(cat_file_or_empty ./scripts/wallets/keeper3-wallet/payment.hash)
+pkhs="[{\"bytes\": \"$pkh1\"}, {\"bytes\": \"$pkh2\"}, {\"bytes\": \"$pkh3\"}]"
+thres=2
+# pool stuff
+rewardPkh=$(cat_file_or_empty ./scripts/wallets/reward-wallet/payment.hash)
+rewardSc=""
+# validator hashes
+saleHash=$(cat hashes/sale.hash)
+queueHash=$(cat hashes/queue.hash)
+bandHash=$(cat hashes/band_lock.hash)
+vaultHash=$(cat hashes/vault.hash)
+stakeHash=$(cat hashes/stake.hash)
 
-# pid=$(jq -r '.feedPid' config.json)
-# tkn=$(jq -r '.feedTkn' config.json)
-# ref=$(jq -r '.feedHash' config.json)
-# pid_cbor=$(python3 -c "import cbor2;hex_string='${pid}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
-# tkn_cbor=$(python3 -c "import cbor2;hex_string='${tkn}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
-# ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
+# pointer hash
+pointerHash=$(cat hashes/pointer_policy.hash)
+batcherHash=$(cat hashes/batcher.hash)
 
-# aiken blueprint apply -o plutus.json -v oracle.params "${pid_cbor}"
-# aiken blueprint apply -o plutus.json -v oracle.params "${tkn_cbor}"
-# aiken blueprint apply -o plutus.json -v oracle.params "${ref_cbor}"
-# aiken blueprint convert -v oracle.params > contracts/oracle_contract.plutus
-# cardano-cli transaction policyid --script-file contracts/oracle_contract.plutus > hashes/oracle.hash
+# the purchase upper bound
+pqb=$(jq -r '.purchaseQueueBound' config.json)
+# the refund upper bound
+rqb=$(jq -r '.refundQueueBound' config.json)
+# the start upper bound
+ssb=$(jq -r '.startSaleBound' config.json)
 
-# ###############################################################################
-# ############## DATUM AND REDEEMER STUFF #######################################
-# ###############################################################################
-# echo -e "\033[1;33m Updating Reference Datum \033[0m"
-# # keepers
-# pkh1=$(cat_file_or_empty ./scripts/wallets/keeper1-wallet/payment.hash)
-# pkh2=$(cat_file_or_empty ./scripts/wallets/keeper2-wallet/payment.hash)
-# pkh3=$(cat_file_or_empty ./scripts/wallets/keeper3-wallet/payment.hash)
-# pkhs="[{\"bytes\": \"$pkh1\"}, {\"bytes\": \"$pkh2\"}, {\"bytes\": \"$pkh3\"}]"
-# thres=2
-# # pool stuff
-# rewardPkh=$(cat_file_or_empty ./scripts/wallets/reward-wallet/payment.hash)
-# rewardSc=""
-# # validator hashes
-# saleHash=$(cat hashes/sale.hash)
-# queueHash=$(cat hashes/queue.hash)
-# bandHash=$(cat hashes/band_lock.hash)
-# vaultHash=$(cat hashes/vault.hash)
-# stakeHash=$(cat hashes/stake.hash)
+# This needs to be generated from the hot key in start info.
+# Assume the hot key is all the keys for now
+hotKey=$(jq -r '.hotKey' config.json)
 
-# # pointer hash
-# pointerHash=$(cat hashes/pointer_policy.hash)
-# batcherHash=$(cat hashes/batcher.hash)
+cp ./scripts/data/reference/reference-datum.json ./scripts/data/reference/backup-reference-datum.json
 
-# # the purchase upper bound
-# pqb=$(jq -r '.purchaseQueueBound' config.json)
-# # the refund upper bound
-# rqb=$(jq -r '.refundQueueBound' config.json)
-# # the start upper bound
-# ssb=$(jq -r '.startSaleBound' config.json)
+feed_pkh=$(jq -r ' .feedHash' config.json)
+feed_pid=$(jq -r ' .feedPid' config.json)
+feed_tkn=$(jq -r '.feedTkn' config.json)
 
-# # This needs to be generated from the hot key in start info.
-# # Assume the hot key is all the keys for now
-# hotKey=$(jq -r '.hotKey' config.json)
+# update reference data
+jq \
+--arg hotKey "$hotKey" \
+--argjson pkhs "$pkhs" \
+--argjson thres "$thres" \
+--arg poolId "$poolId" \
+--arg rewardPkh "$rewardPkh" \
+--arg rewardSc "$rewardSc" \
+--arg storageHash "$storageHash" \
+--arg bandHash "$bandHash" \
+--arg saleHash "$saleHash" \
+--arg queueHash "$queueHash" \
+--arg vaultHash "$vaultHash" \
+--arg stakeHash "$stakeHash" \
+--argjson pqb "$pqb" \
+--argjson rqb "$rqb" \
+--argjson ssb "$ssb" \
+--arg pointerHash "$pointerHash" \
+--arg batcherHash "$batcherHash" \
+--arg feed_pkh "$feed_pkh" \
+--arg feed_pid "$feed_pid" \
+--arg feed_tkn "$feed_tkn" \
+'.fields[0].bytes=$hotKey | 
+.fields[1].fields[0].list |= ($pkhs | .[0:length]) | 
+.fields[1].fields[1].int=$thres | 
+.fields[2].fields[0].bytes=$poolId |
+.fields[2].fields[1].fields[0].bytes=$rewardPkh |
+.fields[2].fields[1].fields[1].bytes=$rewardSc |
+.fields[3].fields[0].bytes=$saleHash |
+.fields[3].fields[1].bytes=$queueHash |
+.fields[3].fields[2].bytes=$bandHash |
+.fields[3].fields[3].bytes=$vaultHash |
+.fields[3].fields[4].bytes=$stakeHash |
+.fields[4].fields[0].int=$pqb |
+.fields[4].fields[1].int=$rqb |
+.fields[4].fields[2].int=$ssb |
+.fields[5].bytes=$pointerHash |
+.fields[6].fields[3].bytes=$batcherHash |
+.fields[7].fields[0].bytes=$feed_pkh |
+.fields[7].fields[1].bytes=$feed_pid |
+.fields[7].fields[2].bytes=$feed_tkn
+' \
+./scripts/data/reference/reference-datum.json | sponge ./scripts/data/reference/reference-datum.json
 
-# cp ./scripts/data/reference/reference-datum.json ./scripts/data/reference/backup-reference-datum.json
+# Update Staking Redeemer
+echo -e "\033[1;33m Updating Stake Redeemer \033[0m"
+stakeHash=$(cat_file_or_empty ./hashes/stake.hash)
+jq \
+--arg stakeHash "$stakeHash" \
+'.fields[0].bytes=$stakeHash' \
+./scripts/data/staking/delegate-redeemer.json | sponge ./scripts/data/staking/delegate-redeemer.json
 
-# feed_pkh=$(jq -r ' .feedHash' config.json)
-# feed_pid=$(jq -r ' .feedPid' config.json)
-# feed_tkn=$(jq -r '.feedTkn' config.json)
+backup="./scripts/data/reference/backup-reference-datum.json"
+frontup="./scripts/data/reference/reference-datum.json"
 
-# # update reference data
-# jq \
-# --arg hotKey "$hotKey" \
-# --argjson pkhs "$pkhs" \
-# --argjson thres "$thres" \
-# --arg poolId "$poolId" \
-# --arg rewardPkh "$rewardPkh" \
-# --arg rewardSc "$rewardSc" \
-# --arg storageHash "$storageHash" \
-# --arg bandHash "$bandHash" \
-# --arg saleHash "$saleHash" \
-# --arg queueHash "$queueHash" \
-# --arg vaultHash "$vaultHash" \
-# --arg stakeHash "$stakeHash" \
-# --argjson pqb "$pqb" \
-# --argjson rqb "$rqb" \
-# --argjson ssb "$ssb" \
-# --arg pointerHash "$pointerHash" \
-# --arg batcherHash "$batcherHash" \
-# --arg feed_pkh "$feed_pkh" \
-# --arg feed_pid "$feed_pid" \
-# --arg feed_tkn "$feed_tkn" \
-# '.fields[0].bytes=$hotKey | 
-# .fields[1].fields[0].list |= ($pkhs | .[0:length]) | 
-# .fields[1].fields[1].int=$thres | 
-# .fields[2].fields[0].bytes=$poolId |
-# .fields[2].fields[1].fields[0].bytes=$rewardPkh |
-# .fields[2].fields[1].fields[1].bytes=$rewardSc |
-# .fields[3].fields[0].bytes=$saleHash |
-# .fields[3].fields[1].bytes=$queueHash |
-# .fields[3].fields[2].bytes=$bandHash |
-# .fields[3].fields[3].bytes=$vaultHash |
-# .fields[3].fields[4].bytes=$stakeHash |
-# .fields[4].fields[0].int=$pqb |
-# .fields[4].fields[1].int=$rqb |
-# .fields[4].fields[2].int=$ssb |
-# .fields[5].bytes=$pointerHash |
-# .fields[6].fields[3].bytes=$batcherHash |
-# .fields[7].fields[0].bytes=$feed_pkh |
-# .fields[7].fields[1].bytes=$feed_pid |
-# .fields[7].fields[2].bytes=$feed_tkn
-# ' \
-# ./scripts/data/reference/reference-datum.json | sponge ./scripts/data/reference/reference-datum.json
+# Get the SHA-256 hash values of the files using sha256sum and command substitution
+hash1=$(sha256sum "$backup" | awk '{ print $1 }')
+hash2=$(sha256sum "$frontup" | awk '{ print $1 }')
 
-# # Update Staking Redeemer
-# echo -e "\033[1;33m Updating Stake Redeemer \033[0m"
-# stakeHash=$(cat_file_or_empty ./hashes/stake.hash)
-# jq \
-# --arg stakeHash "$stakeHash" \
-# '.fields[0].bytes=$stakeHash' \
-# ./scripts/data/staking/delegate-redeemer.json | sponge ./scripts/data/staking/delegate-redeemer.json
-
-# backup="./scripts/data/reference/backup-reference-datum.json"
-# frontup="./scripts/data/reference/reference-datum.json"
-
-# # Get the SHA-256 hash values of the files using sha256sum and command substitution
-# hash1=$(sha256sum "$backup" | awk '{ print $1 }')
-# hash2=$(sha256sum "$frontup" | awk '{ print $1 }')
-
-# # Check if the hash values are equal using string comparison in an if statement
-# if [ "$hash1" = "$hash2" ]; then
-#   echo -e "\033[1;46mNo Datum Changes Required.\033[0m"
-# else
-#   echo -e "\033[1;43mA Datum Update Is Required.\033[0m"
-# fi
+# Check if the hash values are equal using string comparison in an if statement
+if [ "$hash1" = "$hash2" ]; then
+  echo -e "\033[1;46mNo Datum Changes Required.\033[0m"
+else
+  echo -e "\033[1;43mA Datum Update Is Required.\033[0m"
+fi
 
 # end of build
 echo -e "\033[1;32m Building Complete! \033[0m"
