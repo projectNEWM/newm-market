@@ -2,6 +2,8 @@
 
 ##
 
+All spending validators follow this datum pattern:
+
 ```rust
 when maybe_datum is {
   Some(datum) ->
