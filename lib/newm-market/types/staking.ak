@@ -1,6 +1,6 @@
 use aiken/crypto.{ScriptHash}
 
-pub type WithdrawRedeemer {
+pub type StakingRedeemer {
   Withdraw
   Delegate(ScriptHash)
 }

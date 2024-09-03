@@ -10,7 +10,7 @@ use cardano/transaction.{Input, Transaction}
 use cardano/tx
 use cardano/value
 use newm_market/types/reference.{ReferenceDatum}
-use newm_market/types/staking.{Delegate, Withdraw, WithdrawRedeemer}
+use newm_market/types/staking.{Delegate, StakingRedeemer, Withdraw}
 use validation/find
 use validation/payout
 
@@ -20,7 +20,7 @@ validator contract(
   ref_hash: ScriptHash,
 ) {
   withdraw(
-    redeemer: WithdrawRedeemer,
+    redeemer: StakingRedeemer,
     credential: Credential,
     transaction: Transaction,
   ) {
@@ -43,7 +43,7 @@ validator contract(
   }
 
   publish(
-    redeemer: WithdrawRedeemer,
+    redeemer: StakingRedeemer,
     certificate: Certificate,
     transaction: Transaction,
   ) {
