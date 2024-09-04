@@ -10,18 +10,18 @@ stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 sale_script_path="../../contracts/sale_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
+script_address=$(${cli} conway address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # pointer minter key
-newm_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
+newm_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
 
 # collat, artist, reference
 artist_address=$(cat ../wallets/artist-wallet/payment.addr)
-artist_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
+artist_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
 
 #
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 pointer_pid=$(cat ../../hashes/pointer_policy.hash)
 pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
@@ -29,7 +29,7 @@ tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
 total_amt=100000000
 
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${script_address} \
     ${network} \
     --out-file ../tmp/script_utxo.json
@@ -78,14 +78,16 @@ jq \
 
 # compute the correct start redeemer 
 
-script_address_out="${script_address} + ${LOVELACE_VALUE} + ${returning_asset} + ${pointer_asset}"
+# script_address_out="${script_address} + ${LOVELACE_VALUE} + ${returning_asset} + ${pointer_asset}"
+change_value=$((${LOVELACE_VALUE} - 1000000))
+script_address_out="${script_address} + ${change_value} + ${returning_asset} + ${pointer_asset}"
 echo $script_address_out
 #
 # exit
 #
 
 echo -e "\033[0;36m Gathering Artist UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${artist_address} \
     --out-file ../tmp/artist_utxo.json
@@ -99,7 +101,7 @@ TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/artist
 artist_tx_in=${TXIN::-8}
 
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -110,22 +112,21 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
-data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
-pointer_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
+data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
+pointer_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
 
 execution_unts="(0, 0)"
 
 echo -e "\033[0;36m Building Tx \033[0m"
-${cli} transaction build-raw \
-    --babbage-era \
+${cli} conway transaction build-raw \
     --out-file ../tmp/tx.draft \
     --protocol-params-file ../tmp/protocol.json \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
     --tx-in-collateral="${collat_utxo}" \
     --tx-in ${script_tx_in} \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${execution_unts}" \
     --spending-reference-tx-in-redeemer-file ../data/sale/start-redeemer.json \
@@ -133,23 +134,23 @@ ${cli} transaction build-raw \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json \
     --mint="${pointer_asset}" \
     --mint-tx-in-reference="${pointer_ref_utxo}#1" \
-    --mint-plutus-script-v2 \
+    --mint-plutus-script-v3 \
     --policy-id="${pointer_pid}" \
     --mint-reference-tx-in-execution-units="${execution_unts}" \
     --mint-reference-tx-in-redeemer-file ../data/pointer/mint-redeemer.json \
     --required-signer-hash ${newm_pkh} \
     --required-signer-hash ${collat_pkh} \
-    --fee 0
+    --fee 1000000
 
-python3 -c "import sys, json; sys.path.append('../py/'); from tx_simulation import from_file; exe_units=from_file('../tmp/tx.draft', False);print(json.dumps(exe_units))" > ../data/exe_units.json
+python3 -c "import sys, json; sys.path.append('../py/'); from tx_simulation import from_file; exe_units=from_file('../tmp/tx.draft', False, debug=False);print(json.dumps(exe_units))" > ../data/exe_units.json
 
 cat ../data/exe_units.json
 
-# exit
 cpu=$(jq -r '.[0].cpu' ../data/exe_units.json)
 mem=$(jq -r '.[0].mem' ../data/exe_units.json)
 
 sale_execution_unts="(${cpu}, ${mem})"
+echo $sale_execution_unts
 sale_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 sale_computation_fee_int=$(printf "%.0f" "$sale_computation_fee")
 
@@ -157,13 +158,24 @@ cpu=$(jq -r '.[1].cpu' ../data/exe_units.json)
 mem=$(jq -r '.[1].mem' ../data/exe_units.json)
 
 pointer_execution_unts="(${cpu}, ${mem})"
+echo $pointer_execution_unts
 pointer_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 pointer_computation_fee_int=$(printf "%.0f" "$pointer_computation_fee")
 
-FEE=$(${cli} transaction calculate-min-fee \
+# exit
+
+size=$(${cli} conway query ref-script-size \
+${network} \
+--output-json \
+--tx-in="${script_ref_utxo}#1" \
+--tx-in="${pointer_ref_utxo}#1" | jq -r '.refInputScriptSize'
+)
+
+FEE=$(${cli} conway transaction calculate-min-fee \
 --tx-body-file ../tmp/tx.draft \
 ${network} \
 --protocol-params-file ../tmp/protocol.json \
+--reference-script-size ${size} \
 --witness-count 3)
 fee=$(echo $FEE | rev | cut -c 9- | rev)
 
@@ -172,17 +184,18 @@ echo Tx Fee: $total_fee
 change_value=$((${LOVELACE_VALUE} - ${total_fee}))
 script_address_out="${script_address} + ${change_value} + ${returning_asset} + ${pointer_asset}"
 
+# exit
+
 echo "Return OUTPUT: "${script_address_out}
 
-${cli} transaction build-raw \
-    --babbage-era \
+${cli} conway transaction build-raw \
     --out-file ../tmp/tx.draft \
     --protocol-params-file ../tmp/protocol.json \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
     --tx-in-collateral="${collat_utxo}" \
     --tx-in ${script_tx_in} \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${sale_execution_unts}" \
     --spending-reference-tx-in-redeemer-file ../data/sale/start-redeemer.json \
@@ -190,7 +203,7 @@ ${cli} transaction build-raw \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json  \
     --mint="${pointer_asset}" \
     --mint-tx-in-reference="${pointer_ref_utxo}#1" \
-    --mint-plutus-script-v2 \
+    --mint-plutus-script-v3 \
     --policy-id="${pointer_pid}" \
     --mint-reference-tx-in-execution-units="${pointer_execution_unts}" \
     --mint-reference-tx-in-redeemer-file ../data/pointer/mint-redeemer.json \
@@ -201,7 +214,7 @@ ${cli} transaction build-raw \
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/newm-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
@@ -211,9 +224,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

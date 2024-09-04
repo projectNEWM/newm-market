@@ -39,78 +39,63 @@ tkn_cbor=$(python3 -c "import cbor2;hex_string='${tkn}';data = bytes.fromhex(hex
 poolId=$(jq -r '.poolId' config.json)
 
 echo -e "\033[1;33m Convert Reference Contract \033[0m"
-aiken blueprint apply -o plutus.json -v reference.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v reference.params "${tkn_cbor}"
-aiken blueprint convert -v reference.params > contracts/reference_contract.plutus
-cardano-cli transaction policyid --script-file contracts/reference_contract.plutus > hashes/reference_contract.hash
+aiken blueprint apply -o plutus.json -v reference.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v reference.contract.spend "${tkn_cbor}"
+aiken blueprint convert -v reference.contract.spend > contracts/reference_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/reference_contract.plutus > hashes/reference_contract.hash
 
 # reference hash
 ref=$(cat hashes/reference_contract.hash)
 ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
 
 echo -e "\033[1;33m Convert Stake Contract \033[0m"
-aiken blueprint apply -o plutus.json -v staking.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v staking.params "${tkn_cbor}"
-aiken blueprint apply -o plutus.json -v staking.params "${ref_cbor}"
-aiken blueprint convert -v staking.params > contracts/stake_contract.plutus
-cardano-cli transaction policyid --script-file contracts/stake_contract.plutus > hashes/stake.hash
-cardano-cli stake-address registration-certificate --stake-script-file contracts/stake_contract.plutus --out-file certs/stake.cert
-cardano-cli stake-address delegation-certificate --stake-script-file contracts/stake_contract.plutus --stake-pool-id ${poolId} --out-file certs/deleg.cert
+aiken blueprint apply -o plutus.json -v staking.contract.withdraw "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v staking.contract.withdraw "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v staking.contract.withdraw "${ref_cbor}"
+aiken blueprint convert -v staking.contract.withdraw > contracts/stake_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/stake_contract.plutus > hashes/stake.hash
+cardano-cli conway stake-address registration-certificate --stake-script-file contracts/stake_contract.plutus --key-reg-deposit-amt 2000000 --out-file certs/stake.cert
+cardano-cli conway stake-address stake-delegation-certificate --stake-script-file contracts/stake_contract.plutus --stake-pool-id ${poolId} --out-file certs/deleg.cert
 
 echo -e "\033[1;33m Convert Sale Contract \033[0m"
-aiken blueprint apply -o plutus.json -v sale.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v sale.params "${tkn_cbor}"
-aiken blueprint apply -o plutus.json -v sale.params "${ref_cbor}"
-aiken blueprint convert -v sale.params > contracts/sale_contract.plutus
-cardano-cli transaction policyid --script-file contracts/sale_contract.plutus > hashes/sale.hash
+aiken blueprint apply -o plutus.json -v sale.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v sale.contract.spend "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v sale.contract.spend "${ref_cbor}"
+aiken blueprint convert -v sale.contract.spend > contracts/sale_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/sale_contract.plutus > hashes/sale.hash
 
 echo -e "\033[1;33m Convert Queue Contract \033[0m"
-aiken blueprint apply -o plutus.json -v queue.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v queue.params "${tkn_cbor}"
-aiken blueprint apply -o plutus.json -v queue.params "${ref_cbor}"
-aiken blueprint convert -v queue.params > contracts/queue_contract.plutus
-cardano-cli transaction policyid --script-file contracts/queue_contract.plutus > hashes/queue.hash
+aiken blueprint apply -o plutus.json -v queue.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v queue.contract.spend "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v queue.contract.spend "${ref_cbor}"
+aiken blueprint convert -v queue.contract.spend > contracts/queue_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/queue_contract.plutus > hashes/queue.hash
 
 echo -e "\033[1;33m Convert Pointer Contract \033[0m"
-aiken blueprint apply -o plutus.json -v pointer.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v pointer.params "${tkn_cbor}"
-aiken blueprint apply -o plutus.json -v pointer.params "${ref_cbor}"
-aiken blueprint convert -v pointer.params > contracts/pointer_contract.plutus
-cardano-cli transaction policyid --script-file contracts/pointer_contract.plutus > hashes/pointer_policy.hash
+aiken blueprint apply -o plutus.json -v pointer.contract.mint "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v pointer.contract.mint "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v pointer.contract.mint "${ref_cbor}"
+aiken blueprint convert -v pointer.contract.mint > contracts/pointer_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/pointer_contract.plutus > hashes/pointer_policy.hash
 
 echo -e "\033[1;33m Convert Band Lock Contract \033[0m"
-aiken blueprint apply -o plutus.json -v band.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v band.params "${tkn_cbor}"
-aiken blueprint apply -o plutus.json -v band.params "${ref_cbor}"
-aiken blueprint convert -v band.params > contracts/band_lock_contract.plutus
-cardano-cli transaction policyid --script-file contracts/band_lock_contract.plutus > hashes/band_lock.hash
+aiken blueprint apply -o plutus.json -v band.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v band.contract.spend "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v band.contract.spend "${ref_cbor}"
+aiken blueprint convert -v band.contract.spend > contracts/band_lock_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/band_lock_contract.plutus > hashes/band_lock.hash
 
 echo -e "\033[1;33m Convert Vault Contract \033[0m"
-aiken blueprint apply -o plutus.json -v vault.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v vault.params "${tkn_cbor}"
-aiken blueprint apply -o plutus.json -v vault.params "${ref_cbor}"
-aiken blueprint convert -v vault.params > contracts/vault_contract.plutus
-cardano-cli transaction policyid --script-file contracts/vault_contract.plutus > hashes/vault.hash
+aiken blueprint apply -o plutus.json -v vault.contract.spend "${pid_cbor}"
+aiken blueprint apply -o plutus.json -v vault.contract.spend "${tkn_cbor}"
+aiken blueprint apply -o plutus.json -v vault.contract.spend "${ref_cbor}"
+aiken blueprint convert -v vault.contract.spend > contracts/vault_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/vault_contract.plutus > hashes/vault.hash
 
 echo -e "\033[1;33m Convert Batcher Token Contract \033[0m"
-aiken blueprint apply -o plutus.json -v batcher.params "${ref_cbor}"
-aiken blueprint convert -v batcher.params > contracts/batcher_contract.plutus
-cardano-cli transaction policyid --script-file contracts/batcher_contract.plutus > hashes/batcher.hash
-
-echo -e "\033[1;33m Convert Testing Purpose Only C3 Oracle Contract \033[0m"
-
-pid=$(jq -r '.feedPid' config.json)
-tkn=$(jq -r '.feedTkn' config.json)
-ref=$(jq -r '.feedHash' config.json)
-pid_cbor=$(python3 -c "import cbor2;hex_string='${pid}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
-tkn_cbor=$(python3 -c "import cbor2;hex_string='${tkn}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
-ref_cbor=$(python3 -c "import cbor2;hex_string='${ref}';data = bytes.fromhex(hex_string);encoded = cbor2.dumps(data);print(encoded.hex())")
-
-aiken blueprint apply -o plutus.json -v oracle.params "${pid_cbor}"
-aiken blueprint apply -o plutus.json -v oracle.params "${tkn_cbor}"
-aiken blueprint apply -o plutus.json -v oracle.params "${ref_cbor}"
-aiken blueprint convert -v oracle.params > contracts/oracle_contract.plutus
-cardano-cli transaction policyid --script-file contracts/oracle_contract.plutus > hashes/oracle.hash
+aiken blueprint apply -o plutus.json -v batcher.contract.mint "${ref_cbor}"
+aiken blueprint convert -v batcher.contract.mint > contracts/batcher_contract.plutus
+cardano-cli conway transaction policyid --script-file contracts/batcher_contract.plutus > hashes/batcher.hash
 
 ###############################################################################
 ############## DATUM AND REDEEMER STUFF #######################################
@@ -204,6 +189,10 @@ jq \
 --arg stakeHash "$stakeHash" \
 '.fields[0].bytes=$stakeHash' \
 ./scripts/data/staking/delegate-redeemer.json | sponge ./scripts/data/staking/delegate-redeemer.json
+jq \
+--arg stakeHash "$stakeHash" \
+'.fields[0].bytes=$stakeHash' \
+./scripts/data/staking/register-redeemer.json | sponge ./scripts/data/staking/register-redeemer.json
 
 backup="./scripts/data/reference/backup-reference-datum.json"
 frontup="./scripts/data/reference/reference-datum.json"

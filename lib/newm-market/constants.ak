@@ -1,4 +1,5 @@
-use aiken/bytearray
+use aiken/primitive/bytearray
+use cardano/assets.{Lovelace}
 
 // batcher token
 pub const batcher_token_name: ByteArray = #"affab1e0005e77ab1e"
@@ -11,10 +12,6 @@ pub const batcher_token_name_length: Int = 9
 
 // echo -n "USD" | xxd -ps
 pub const usd_policy_id: ByteArray = #"555344"
-
-// Lovelace is just a wrapper around int
-pub type Lovelace =
-  Int
 
 // 10 ADA is the default vault minimum
 pub const vault_minimum_lovelace: Lovelace = 10_000_000

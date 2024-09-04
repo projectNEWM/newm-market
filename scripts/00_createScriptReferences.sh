@@ -9,7 +9,7 @@ network="${network}"
 
 
 mkdir -p ./tmp
-${cli} query protocol-parameters ${network} --out-file ./tmp/protocol.json
+${cli} conway query protocol-parameters ${network} --out-file ./tmp/protocol.json
 
 # Addresses
 reference_wallet_name="reference-wallet"
@@ -17,7 +17,7 @@ reference_address=$(cat ./wallets/${reference_wallet_name}/payment.addr)
 script_reference_address=$(cat ./wallets/reference-wallet/payment.addr)
 
 echo -e "\033[0;35m\nGathering UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${reference_address} \
     --out-file ./tmp/reference_utxo.json
@@ -45,8 +45,7 @@ do
     ((counter++)) || true
     
     # get the required lovelace
-    min_utxo=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
+    min_utxo=$(${cli} conway transaction calculate-min-required-utxo \
     --protocol-params-file ./tmp/protocol.json \
     --tx-out-reference-script-file ${contract} \
     --tx-out="${script_reference_address} + 1000000" | tr -dc '0-9')
@@ -54,27 +53,29 @@ do
     script_reference_utxo="${script_reference_address} + ${min_utxo}"
     echo -e "\033[0;32m\nCreating ${file_name} Script:\n" ${script_reference_utxo} " \033[0m"
 
-    ${cli} transaction build-raw \
-    --babbage-era \
+    ${cli} conway transaction build-raw \
     --protocol-params-file ./tmp/protocol.json \
     --out-file ./tmp/tx.draft \
     --tx-in ${ref_tx_in} \
     --tx-out="${reference_address} + ${changeAmount}" \
     --tx-out="${script_reference_utxo}" \
     --tx-out-reference-script-file ${contract} \
-    --fee 900000
+    --fee 0
 
-    FEE=$(${cli} transaction calculate-min-fee \
+    # this can't be correct...
+    size=$(jq -r '.cborHex' ${contract} | awk '{print length($0)*4}')
+
+    FEE=$(${cli} conway transaction calculate-min-fee \
         --tx-body-file ./tmp/tx.draft \
         --protocol-params-file ./tmp/protocol.json \
+        --reference-script-size ${size} \
         --witness-count 1)
     echo -e "\033[0;35mFEE: ${FEE} \033[0m"
     fee=$(echo $FEE | rev | cut -c 9- | rev)
 
     changeAmount=$((${changeAmount} - ${min_utxo} - ${fee}))
 
-    ${cli} transaction build-raw \
-        --babbage-era \
+    ${cli} conway transaction build-raw \
         --protocol-params-file ./tmp/protocol.json \
         --out-file ./tmp/tx.draft \
         --tx-in ${ref_tx_in} \
@@ -83,13 +84,13 @@ do
         --tx-out-reference-script-file ${contract} \
         --fee ${fee}
 
-    ${cli} transaction sign \
+    ${cli} conway transaction sign \
         --signing-key-file ./wallets/${reference_wallet_name}/payment.skey \
         --tx-body-file ./tmp/tx.draft \
         --out-file ./tmp/${first_word}-reference-utxo.signed \
         ${network}
 
-    ref_tx_in=$(${cli} transaction txid --tx-body-file ./tmp/tx.draft)#0
+    ref_tx_in=$(${cli} conway transaction txid --tx-body-file ./tmp/tx.draft)#0
     echo 
     echo -e "\033[0;36mNext UTxO: $ref_tx_in \033[0m"
 done
@@ -102,7 +103,7 @@ do
     first_word=${file_name%%_*}
     echo -e "\nSubmitting ${first_word}"
     # Perform operations on each file
-    ${cli} transaction submit \
+    ${cli} conway transaction submit \
         ${network} \
         --tx-file ./tmp/${first_word}-reference-utxo.signed
 done

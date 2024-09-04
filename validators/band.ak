@@ -1,239 +1,257 @@
-use aiken/bytearray
-use aiken/dict
-use aiken/list
-use aiken/transaction.{Input, ScriptContext, Spend, Transaction}
-use aiken/transaction/credential.{Address}
-use aiken/transaction/value.{AssetName, PolicyId, Value}
-use assist/addresses
-use assist/count
-use assist/data
-use assist/find
-use assist/minting
-use assist/payout
-use assist/signing
-use assist/types/hashes.{TxHash, ValidatorHash}
-use assist/types/token
-use assist/types/wallet.{Wallet}
-use assist/values
+use aiken/collection/dict
+use aiken/collection/list
+use aiken/crypto.{ScriptHash}
+use aiken/primitive/bytearray
+use cardano/address.{Address}
+use cardano/addresses
+use cardano/assets.{AssetName, PolicyId, Value}
+use cardano/datum
+use cardano/minting
+use cardano/transaction.{Input, OutputReference, Transaction, TransactionId}
+use cardano/tx
+use cardano/value
 use newm_market/constants
 use newm_market/types/band.{
   AddToBand, BandLockUpRedeemer, BurnBand, MintBand, RemoveBand,
 }
 use newm_market/types/reference.{ReferenceDatum}
+use types/token
+use types/wallet.{Wallet}
+use validation/count
+use validation/find
+use validation/payout
 
-validator(
+validator contract(
   starter_pid: PolicyId,
   starter_tkn: AssetName,
-  ref_hash: ValidatorHash,
+  ref_hash: ScriptHash,
 ) {
-  fn params(
-    this_datum: Wallet,
+  spend(
+    maybe_datum: Option<Data>,
     redeemer: BandLockUpRedeemer,
-    context: ScriptContext,
-  ) -> Bool {
-    expect Spend(output_reference) = context.purpose
-    // the transaction being validated
-    let Transaction {
-      inputs,
-      outputs,
-      reference_inputs,
-      extra_signatories,
-      mint,
-      ..
-    } = context.transaction
-    // the input being validated
-    let this_input: Input = find.input_by_ref(inputs, output_reference)
-    let this_value: Value = this_input.output.value
-    // data reference stuff
-    let ref_addr: Address = credential.from_script(ref_hash)
-    // find the first reference input
-    let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
-    // the reference this_datum
-    expect ref_datum: ReferenceDatum = data.input_datum(ref_input)
-    when redeemer is {
-      // remove utxo back to owner if not full
-      RemoveBand -> {
-        let owner_addr: Address = addresses.from_wallet(this_datum)
-        and {
-          // owner must sign it
-          signing.verify_sig(extra_signatories, this_datum.pkh)?,
-          // owner must get the utxo back
-          payout.exact(owner_addr, this_value, outputs)?,
-          // single script input
-          count.inputs_by_vkh(inputs, 1)?,
-          // no script outputs
-          count.outputs_by_vkh(outputs, 0)?,
-          // anything but a complete set can be removed
-          !values.prove_exact_nft(
-            this_value,
-            ref_datum.batcher_data.batcher_pid,
-            constants.complete_set_token_name,
-          )?,
-          // data reference must be holding correct token
-          values.prove_exact_nft(
-            ref_input.output.value,
-            starter_pid,
-            starter_tkn,
-          )?,
+    output_reference: OutputReference,
+    transaction: Transaction,
+  ) {
+    when maybe_datum is {
+      Some(this_datum) ->
+        if this_datum is Wallet {
+          let Transaction {
+            inputs,
+            outputs,
+            reference_inputs,
+            extra_signatories,
+            mint,
+            ..
+          } = transaction
+          // the input being validated
+          let this_input: Input = find.input_by_ref(inputs, output_reference)
+          let this_value: Value = this_input.output.value
+          // data reference stuff
+          let ref_addr: Address = address.from_script(ref_hash)
+          // find the first reference input
+          let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
+          // the reference this_datum
+          expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+          when redeemer is {
+            // remove utxo back to owner if not full
+            RemoveBand -> {
+              let owner_addr: Address = addresses.from_wallet(this_datum)
+              and {
+                // owner must sign it
+                tx.verify_signature(extra_signatories, this_datum.pkh)?,
+                // owner must get the utxo back
+                payout.exact(owner_addr, this_value, outputs)?,
+                // single script input
+                count.inputs_by_vkh(inputs, 1)?,
+                // no script outputs
+                count.outputs_by_vkh(outputs, 0)?,
+                // anything but a complete set can be removed
+                !value.prove_exact_nft(
+                  this_value,
+                  ref_datum.batcher_data.batcher_pid,
+                  constants.complete_set_token_name,
+                )?,
+                // data reference must be holding correct token
+                value.prove_exact_nft(
+                  ref_input.output.value,
+                  starter_pid,
+                  starter_tkn,
+                )?,
+              }
+            }
+            // add some members to the band if not full
+            AddToBand { members } -> {
+              let that_value: Value =
+                this_value |> token.add_tokens_to_value(members)
+              let this_addr: Address = this_input.output.address
+              expect that_datum: Wallet =
+                find.output_datum_by_addr(outputs, this_addr)
+              and {
+                // this_datum cant change
+                (this_datum == that_datum)?,
+                // owner must sign it
+                tx.verify_signature(extra_signatories, this_datum.pkh)?,
+                // send at least the members and this_value to the address
+                payout.at_least(this_addr, that_value, outputs)?,
+                // single script input
+                count.inputs_by_vkh(inputs, 1)?,
+                // no script outputs
+                count.outputs_by_vkh(outputs, 1)?,
+                // anything but a complete set can be updated
+                !value.prove_exact_nft(
+                  this_value,
+                  ref_datum.batcher_data.batcher_pid,
+                  constants.complete_set_token_name,
+                )?,
+                // data reference must be holding correct token
+                value.prove_exact_nft(
+                  ref_input.output.value,
+                  starter_pid,
+                  starter_tkn,
+                )?,
+              }
+            }
+            // mint nft and lock full band
+            MintBand -> {
+              let this_addr: Address = this_input.output.address
+              // get the list of token names from the monster pid
+              let token_names1: List<AssetName> =
+                this_value
+                  |> assets.tokens(ref_datum.batcher_data.monster_pid1)
+                  |> dict.keys()
+              let token_names2: List<AssetName> =
+                this_value
+                  |> assets.tokens(ref_datum.batcher_data.monster_pid2)
+                  |> dict.keys()
+              let token_names: List<AssetName> =
+                list.concat(token_names1, token_names2)
+              expect that_datum: Wallet =
+                find.output_datum_by_addr(outputs, this_addr)
+              // check if something is being minted here
+              let mint_list: List<(PolicyId, AssetName, Int)> =
+                mint
+                  |> assets.flatten()
+              // get first utxo info
+              let first_index: Int = find.first_input_index(inputs)
+              let first_tx_hash: TransactionId = find.first_input_txid(inputs)
+              // The prefixes are the same length here
+              let batcher_token_name: AssetName =
+                value.unique_token_name(
+                  first_tx_hash,
+                  first_index,
+                  constants.batcher_token_name,
+                )
+              let complete_set_token_name: AssetName =
+                value.unique_token_name(
+                  first_tx_hash,
+                  first_index,
+                  constants.complete_set_token_name,
+                )
+              // the complete set nft is sent back to the contract
+              let that_value: Value =
+                this_value
+                  |> assets.add(
+                      ref_datum.batcher_data.batcher_pid,
+                      complete_set_token_name,
+                      1,
+                    )
+              //
+              //
+              //
+              and {
+                // datums cant change
+                (this_datum == that_datum)?,
+                // owner must sign it
+                tx.verify_signature(extra_signatories, this_datum.pkh)?,
+                // at least this value and teh complete set token sent to this address
+                payout.at_least(this_addr, that_value, outputs)?,
+                // single script input
+                count.inputs_by_vkh(inputs, 1)?,
+                // single script outputs
+                count.outputs_by_vkh(outputs, 1)?,
+                // must have a full set
+                band.has_correct_tokens(
+                  token_names,
+                  ref_datum.batcher_data.monster_prefixes,
+                )?,
+                // mint exactly 1 batcher token
+                minting.exact(
+                  mint_list,
+                  ref_datum.batcher_data.batcher_pid,
+                  batcher_token_name,
+                  1,
+                )?,
+                // mint exactly 1 complete set token
+                minting.exact(
+                  mint_list,
+                  ref_datum.batcher_data.batcher_pid,
+                  complete_set_token_name,
+                  1,
+                )?,
+                // data reference must be holding correct token
+                value.prove_exact_nft(
+                  ref_input.output.value,
+                  starter_pid,
+                  starter_tkn,
+                )?,
+              }
+            }
+            // burn nft and unlock full band back to owner
+            BurnBand(tkn_ending) -> {
+              // check if something is being minted here
+              let mint_list: List<(PolicyId, AssetName, Int)> =
+                mint
+                  |> assets.flatten()
+              and {
+                // single script input
+                count.inputs_by_vkh(inputs, 1)?,
+                // no script outputs
+                count.outputs_by_vkh(outputs, 0)?,
+                // burn exactly 1 batcher token
+                minting.exact(
+                  mint_list,
+                  ref_datum.batcher_data.batcher_pid,
+                  bytearray.concat(constants.batcher_token_name, tkn_ending),
+                  -1,
+                )?,
+                // mint exactly 1 complete set token
+                minting.exact(
+                  mint_list,
+                  ref_datum.batcher_data.batcher_pid,
+                  bytearray.concat(
+                    constants.complete_set_token_name,
+                    tkn_ending,
+                  ),
+                  -1,
+                )?,
+                // anything but a complete set can be removed
+                value.prove_exact_nft(
+                  this_value,
+                  ref_datum.batcher_data.batcher_pid,
+                  bytearray.concat(
+                    constants.complete_set_token_name,
+                    tkn_ending,
+                  ),
+                )?,
+                // data reference must be holding correct token
+                value.prove_exact_nft(
+                  ref_input.output.value,
+                  starter_pid,
+                  starter_tkn,
+                )?,
+              }
+            }
+          }
+        } else {
+          // incorrect data structures should be spendable
+          True
         }
-      }
-      // add some members to the band if not full
-      AddToBand { members } -> {
-        let that_value: Value = this_value |> token.add_tokens_to_value(members)
-        let this_addr: Address = this_input.output.address
-        expect that_datum: Wallet =
-          find.output_datum_by_addr(outputs, this_addr)
-        and {
-          // this_datum cant change
-          (this_datum == that_datum)?,
-          // owner must sign it
-          signing.verify_sig(extra_signatories, this_datum.pkh)?,
-          // send at least the members and this_value to the address
-          payout.at_least(this_addr, that_value, outputs)?,
-          // single script input
-          count.inputs_by_vkh(inputs, 1)?,
-          // no script outputs
-          count.outputs_by_vkh(outputs, 1)?,
-          // anything but a complete set can be updated
-          !values.prove_exact_nft(
-            this_value,
-            ref_datum.batcher_data.batcher_pid,
-            constants.complete_set_token_name,
-          )?,
-          // data reference must be holding correct token
-          values.prove_exact_nft(
-            ref_input.output.value,
-            starter_pid,
-            starter_tkn,
-          )?,
-        }
-      }
-      // mint nft and lock full band
-      MintBand -> {
-        let this_addr: Address = this_input.output.address
-        // get the list of token names from the monster pid
-        let token_names1: List<AssetName> =
-          this_value
-            |> value.tokens(ref_datum.batcher_data.monster_pid1)
-            |> dict.keys()
-        let token_names2: List<AssetName> =
-          this_value
-            |> value.tokens(ref_datum.batcher_data.monster_pid2)
-            |> dict.keys()
-        let token_names: List<AssetName> =
-          list.concat(token_names1, token_names2)
-        expect that_datum: Wallet =
-          find.output_datum_by_addr(outputs, this_addr)
-        // check if something is being minted here
-        let mint_list: List<(PolicyId, AssetName, Int)> =
-          mint
-            |> value.from_minted_value()
-            |> value.flatten()
-        // get first utxo info
-        let first_index: Int = find.first_input_index(inputs)
-        let first_tx_hash: TxHash = find.first_input_txid(inputs)
-        // The prefixes are the same length here
-        let batcher_token_name: AssetName =
-          values.unique_token_name(
-            first_tx_hash,
-            first_index,
-            constants.batcher_token_name,
-          )
-        let complete_set_token_name: AssetName =
-          values.unique_token_name(
-            first_tx_hash,
-            first_index,
-            constants.complete_set_token_name,
-          )
-        // the complete set nft is sent back to the contract
-        let that_value: Value =
-          this_value
-            |> value.add(
-                ref_datum.batcher_data.batcher_pid,
-                complete_set_token_name,
-                1,
-              )
-        //
-        //
-        //
-        and {
-          // datums cant change
-          (this_datum == that_datum)?,
-          // owner must sign it
-          signing.verify_sig(extra_signatories, this_datum.pkh)?,
-          // at least this value and teh complete set token sent to this address
-          payout.at_least(this_addr, that_value, outputs)?,
-          // single script input
-          count.inputs_by_vkh(inputs, 1)?,
-          // single script outputs
-          count.outputs_by_vkh(outputs, 1)?,
-          // must have a full set
-          band.has_correct_tokens(
-            token_names,
-            ref_datum.batcher_data.monster_prefixes,
-          )?,
-          // mint exactly 1 batcher token
-          minting.exact(
-            mint_list,
-            ref_datum.batcher_data.batcher_pid,
-            batcher_token_name,
-            1,
-          )?,
-          // mint exactly 1 complete set token
-          minting.exact(
-            mint_list,
-            ref_datum.batcher_data.batcher_pid,
-            complete_set_token_name,
-            1,
-          )?,
-          // data reference must be holding correct token
-          values.prove_exact_nft(
-            ref_input.output.value,
-            starter_pid,
-            starter_tkn,
-          )?,
-        }
-      }
-      // burn nft and unlock full band back to owner
-      BurnBand(tkn_ending) -> {
-        // check if something is being minted here
-        let mint_list: List<(PolicyId, AssetName, Int)> =
-          mint
-            |> value.from_minted_value()
-            |> value.flatten()
-        and {
-          // single script input
-          count.inputs_by_vkh(inputs, 1)?,
-          // no script outputs
-          count.outputs_by_vkh(outputs, 0)?,
-          // burn exactly 1 batcher token
-          minting.exact(
-            mint_list,
-            ref_datum.batcher_data.batcher_pid,
-            bytearray.concat(constants.batcher_token_name, tkn_ending),
-            -1,
-          )?,
-          // mint exactly 1 complete set token
-          minting.exact(
-            mint_list,
-            ref_datum.batcher_data.batcher_pid,
-            bytearray.concat(constants.complete_set_token_name, tkn_ending),
-            -1,
-          )?,
-          // anything but a complete set can be removed
-          values.prove_exact_nft(
-            this_value,
-            ref_datum.batcher_data.batcher_pid,
-            bytearray.concat(constants.complete_set_token_name, tkn_ending),
-          )?,
-          // data reference must be holding correct token
-          values.prove_exact_nft(
-            ref_input.output.value,
-            starter_pid,
-            starter_tkn,
-          )?,
-        }
-      }
+      // missing data structures should be spendable
+      None -> True
     }
+  }
+
+  else(_) {
+    fail
   }
 }

@@ -1,5 +1,5 @@
 use aiken/builtin
-use assist/types/moment.{Moment}
+use types/moment.{Moment}
 
 pub type PriceMap =
   Pairs<Int, Data>

@@ -10,18 +10,18 @@ stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 band_lock_script_path="../../contracts/band_lock_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${band_lock_script_path} --stake-script-file ${stake_script_path} ${network})
+script_address=$(${cli} conway address build --payment-script-file ${band_lock_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # collat, artist, reference
 batcher_address=$(cat ../wallets/batcher-wallet/payment.addr)
-batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
+batcher_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
 
 #
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${script_address} \
     ${network} \
     --out-file ../tmp/script_utxo.json
@@ -45,8 +45,7 @@ print(json.dumps(list_of_token_struc))
 
 # Check if the extracted field is an empty array '[]'
 if [[ "$add_to_data" == "[]" ]]; then
-    min_utxo=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
+    min_utxo=$(${cli} conway transaction calculate-min-required-utxo \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
     --tx-out="${script_address} + 5000000" | tr -dc '0-9')
@@ -57,8 +56,7 @@ import sys, json; sys.path.append('../py/'); from token_string import create_tok
 assets = create_token_string(${add_to_data});
 print(assets);
     ")
-    min_utxo=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
+    min_utxo=$(${cli} conway transaction calculate-min-required-utxo \
         --protocol-params-file ../tmp/protocol.json \
         --tx-out-inline-datum-file ../data/band_lock/band-lock-datum.json \
         --tx-out="${script_address} + 5000000 + ${assets}" | tr -dc '0-9')
@@ -70,7 +68,7 @@ echo Output: $batcher_address_out
 # exit
 #
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${batcher_address} \
     --out-file ../tmp/batcher_utxo.json
@@ -84,7 +82,7 @@ TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/batche
 batcher_tx_in=${TXIN::-8}
 
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -95,13 +93,12 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/band-reference-utxo.signed )
-data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/band-reference-utxo.signed )
+data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 # exit
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${batcher_address} \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
@@ -109,7 +106,7 @@ FEE=$(${cli} transaction build \
     --tx-in ${batcher_tx_in} \
     --tx-in ${script_tx_in} \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-redeemer-file ../data/band_lock/remove-redeemer.json \
     --tx-out="${batcher_address_out}" \
@@ -125,7 +122,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/batcher-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
@@ -135,9 +132,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

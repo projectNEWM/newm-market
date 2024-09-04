@@ -7,17 +7,17 @@ cli=$(cat ./data/path_to_cli.sh)
 network=$(cat ./data/network.sh)
 
 # Addresses
-sender_path="wallets/reference-wallet/"
+sender_path="wallets/batcher-wallet/"
 sender_address=$(cat ${sender_path}payment.addr)
 # receiver_address=$(cat wallets/seller-wallet/payment.addr)
 # receiver_address=${sender_address}
-receiver_address=$(jq -r '.starterChangeAddr' ../config.json)
-# receiver_address=""
+# receiver_address=$(jq -r '.starterChangeAddr' ../config.json)
+receiver_address="addr_test1vqvcpfj8lulfsy22rlxzv2ksykvauahqhztfn5wyzyrlwug3sh9xa"
 #
 # exit
 #
 echo -e "\033[0;36m Gathering UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${sender_address} \
     --out-file tmp/sender_utxo.json
@@ -35,8 +35,7 @@ echo Sender UTxO: ${sender_tx_in}
 # exit
 
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file tmp/tx.draft \
     --change-address ${receiver_address} \
     --tx-in ${sender_tx_in} \
@@ -50,7 +49,7 @@ echo -e "\033[1;32m Fee: \033[0m" $FEE
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ${sender_path}payment.skey \
     --tx-body-file tmp/tx.draft \
     --out-file tmp/tx.signed \
@@ -59,7 +58,7 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file tmp/tx.signed
 

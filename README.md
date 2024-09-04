@@ -1,5 +1,23 @@
 # newm-market
 
+##
+
+All spending validators follow this datum pattern:
+
+```rust
+when maybe_datum is {
+  Some(datum) ->
+    if datum is Datum{
+      True
+    } else {
+      // incorrect data structures should be spendable
+      True
+    }
+  // missing data structures should be spendable
+  None -> True
+}
+```
+
 ## Happy Path Setup
 
 We will need some wallets to run everything.

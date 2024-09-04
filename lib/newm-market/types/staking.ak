@@ -1,6 +1,7 @@
-use assist/types/hashes.{ValidatorHash}
+use aiken/crypto.{ScriptHash}
 
-pub type WithdrawRedeemer {
+pub type StakingRedeemer {
   Withdraw
-  Delegate(ValidatorHash)
+  Delegate(ScriptHash)
+  Register(ScriptHash)
 }
