@@ -78,7 +78,9 @@ jq \
 
 # compute the correct start redeemer 
 
-script_address_out="${script_address} + ${LOVELACE_VALUE} + ${returning_asset} + ${pointer_asset}"
+# script_address_out="${script_address} + ${LOVELACE_VALUE} + ${returning_asset} + ${pointer_asset}"
+change_value=$((${LOVELACE_VALUE} - 1000000))
+script_address_out="${script_address} + ${change_value} + ${returning_asset} + ${pointer_asset}"
 echo $script_address_out
 #
 # exit
@@ -138,17 +140,17 @@ ${cli} conway transaction build-raw \
     --mint-reference-tx-in-redeemer-file ../data/pointer/mint-redeemer.json \
     --required-signer-hash ${newm_pkh} \
     --required-signer-hash ${collat_pkh} \
-    --fee 0
+    --fee 1000000
 
-python3 -c "import sys, json; sys.path.append('../py/'); from tx_simulation import from_file; exe_units=from_file('../tmp/tx.draft', False);print(json.dumps(exe_units))" > ../data/exe_units.json
+python3 -c "import sys, json; sys.path.append('../py/'); from tx_simulation import from_file; exe_units=from_file('../tmp/tx.draft', False, debug=False);print(json.dumps(exe_units))" > ../data/exe_units.json
 
 cat ../data/exe_units.json
 
-# exit
 cpu=$(jq -r '.[0].cpu' ../data/exe_units.json)
 mem=$(jq -r '.[0].mem' ../data/exe_units.json)
 
 sale_execution_unts="(${cpu}, ${mem})"
+echo $sale_execution_unts
 sale_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 sale_computation_fee_int=$(printf "%.0f" "$sale_computation_fee")
 
@@ -156,13 +158,24 @@ cpu=$(jq -r '.[1].cpu' ../data/exe_units.json)
 mem=$(jq -r '.[1].mem' ../data/exe_units.json)
 
 pointer_execution_unts="(${cpu}, ${mem})"
+echo $pointer_execution_unts
 pointer_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 pointer_computation_fee_int=$(printf "%.0f" "$pointer_computation_fee")
+
+# exit
+
+size=$(${cli} conway query ref-script-size \
+${network} \
+--output-json \
+--tx-in="${script_ref_utxo}#1" \
+--tx-in="${pointer_ref_utxo}#1" | jq -r '.refInputScriptSize'
+)
 
 FEE=$(${cli} conway transaction calculate-min-fee \
 --tx-body-file ../tmp/tx.draft \
 ${network} \
 --protocol-params-file ../tmp/protocol.json \
+--reference-script-size ${size} \
 --witness-count 3)
 fee=$(echo $FEE | rev | cut -c 9- | rev)
 
@@ -170,6 +183,8 @@ total_fee=$((${fee} + ${sale_computation_fee_int} + ${pointer_computation_fee_in
 echo Tx Fee: $total_fee
 change_value=$((${LOVELACE_VALUE} - ${total_fee}))
 script_address_out="${script_address} + ${change_value} + ${returning_asset} + ${pointer_asset}"
+
+# exit
 
 echo "Return OUTPUT: "${script_address_out}
 

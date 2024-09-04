@@ -47,10 +47,6 @@ FEE=$(${cli} conway transaction build \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     --tx-out="${script_address_out}" \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
-    --tx-out="${script_address_out}" \
-    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
-    --tx-out="${script_address_out}" \
-    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
@@ -58,7 +54,7 @@ IFS=' ' read -ra FEE <<< "${VALUE[1]}"
 FEE=${FEE[1]}
 echo -e "\033[1;32m Fee: \033[0m" $FEE
 #
-exit
+# exit
 #
 echo -e "\033[0;36m Signing \033[0m"
 ${cli} conway transaction sign \
