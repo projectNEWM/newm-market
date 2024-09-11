@@ -55,6 +55,7 @@ aiken blueprint apply -o plutus.json -v staking.contract.withdraw "${ref_cbor}"
 aiken blueprint convert -v staking.contract.withdraw > contracts/stake_contract.plutus
 cardano-cli conway transaction policyid --script-file contracts/stake_contract.plutus > hashes/stake.hash
 cardano-cli conway stake-address registration-certificate --stake-script-file contracts/stake_contract.plutus --key-reg-deposit-amt 2000000 --out-file certs/stake.cert
+cardano-cli conway stake-address deregistration-certificate --stake-script-file contracts/stake_contract.plutus --key-reg-deposit-amt 2000000 --out-file certs/destake.cert
 cardano-cli conway stake-address stake-delegation-certificate --stake-script-file contracts/stake_contract.plutus --stake-pool-id ${poolId} --out-file certs/deleg.cert
 
 echo -e "\033[1;33m Convert Sale Contract \033[0m"
