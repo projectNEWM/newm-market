@@ -35,25 +35,24 @@ validator contract(
     when maybe_datum is {
       Some(this_datum) ->
         if this_datum is QueueDatum {
-          // the transaction being validated
-          let Transaction {
-            inputs,
-            outputs,
-            reference_inputs,
-            fee,
-            extra_signatories,
-            redeemers,
-            validity_range,
-            ..
-          } = transaction
-          // the reference this_datum
-          // the input being validated
-          let this_input: Input = find.input_by_ref(inputs, output_reference)
-          let this_value: Value = this_input.output.value
-          let this_addr: Address = this_input.output.address
           when redeemer is {
             // a batcher can complete a purchase from the queue, for profit
             QueuePurchase -> {
+              // the transaction being validated
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                fee,
+                redeemers,
+                validity_range,
+                ..
+              } = transaction
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              let this_addr: Address = this_input.output.address
               //
               // data reference stuff
               let ref_addr: Address = address.from_script(ref_hash)
@@ -287,6 +286,21 @@ validator contract(
             }
             // a batcher can auto refund a completed queue item, not for profit
             QueueRefund -> {
+              // the transaction being validated
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                fee,
+                validity_range,
+                ..
+              } = transaction
+              // the reference this_datum
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              let this_addr: Address = this_input.output.address
               //
               // data reference stuff
               let ref_addr: Address = address.from_script(ref_hash)
@@ -459,7 +473,14 @@ validator contract(
               }
             }
             // a buyer may always remove their queue item at any time
-            QueueCancel ->
+            QueueCancel -> {
+              // the transaction being validated
+              let Transaction { inputs, extra_signatories, .. } = transaction
+              // the reference this_datum
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_addr: Address = this_input.output.address
               //
               //
               //
@@ -469,6 +490,7 @@ validator contract(
                 // single script input
                 count.inputs_by_addr(inputs, this_addr, 1)?,
               }
+            }
           }
         } else {
           // incorrect data structures should be spendable
