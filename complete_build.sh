@@ -58,6 +58,16 @@ cardano-cli conway stake-address registration-certificate --stake-script-file co
 cardano-cli conway stake-address deregistration-certificate --stake-script-file contracts/stake_contract.plutus --key-reg-deposit-amt 2000000 --out-file certs/destake.cert
 cardano-cli conway stake-address stake-delegation-certificate --stake-script-file contracts/stake_contract.plutus --stake-pool-id ${poolId} --out-file certs/deleg.cert
 
+cardano-cli conway governance drep registration-certificate \
+--drep-script-hash $(cat hashes/stake.hash) \
+--key-reg-deposit-amt 500000000 \
+--out-file certs/registerDRep.cert
+
+cardano-cli conway governance drep retirement-certificate \
+--drep-script-hash $(cat hashes/stake.hash) \
+--deposit-amt 500000000 \
+--out-file certs/unregisterDRep.cert
+
 echo -e "\033[1;33m Convert Sale Contract \033[0m"
 aiken blueprint apply -o plutus.json -v sale.contract.spend "${pid_cbor}"
 aiken blueprint apply -o plutus.json -v sale.contract.spend "${tkn_cbor}"

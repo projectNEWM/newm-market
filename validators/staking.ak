@@ -152,33 +152,13 @@ validator contract(
         }
       }
       RegisterDRep(script_hash, lovelace) -> {
-        let Transaction { reference_inputs, extra_signatories, .. } =
-          transaction
-        // get reference stuff
-        let ref_addr: Address = address.from_script(ref_hash)
-        let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
-        expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
         let new_delegation: Certificate =
           RegisterDelegateRepresentative {
             delegate_representative: Script(script_hash),
             deposit: lovelace,
           }
-        and {
-          // data reference must hold correct token
-          value.prove_exact_nft(
-            ref_input.output.value,
-            starter_pid,
-            starter_tkn,
-          )?,
-          // The only cert is for new delegation
-          (certificate == new_delegation)?,
-          // only keepers can update the data
-          tx.verify_multisig(
-            extra_signatories,
-            ref_datum.keepers.pkhs,
-            ref_datum.keepers.threshold,
-          )?,
-        }
+        // The only cert is for new delegation
+        (certificate == new_delegation)?
       }
       UnRegisterDRep(script_hash, lovelace) -> {
         let Transaction { reference_inputs, extra_signatories, .. } =
