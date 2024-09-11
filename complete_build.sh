@@ -193,6 +193,10 @@ jq \
 --arg stakeHash "$stakeHash" \
 '.fields[0].bytes=$stakeHash' \
 ./scripts/data/staking/register-redeemer.json | sponge ./scripts/data/staking/register-redeemer.json
+jq \
+--arg stakeHash "$stakeHash" \
+'.fields[0].bytes=$stakeHash' \
+./scripts/data/staking/unregister-redeemer.json | sponge ./scripts/data/staking/unregister-redeemer.json
 
 backup="./scripts/data/reference/backup-reference-datum.json"
 frontup="./scripts/data/reference/reference-datum.json"

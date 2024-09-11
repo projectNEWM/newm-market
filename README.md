@@ -1,22 +1,8 @@
-# newm-market
+# Newm Marketplace
 
 ##
 
-All spending validators follow this datum pattern:
 
-```rust
-when maybe_datum is {
-  Some(datum) ->
-    if datum is Datum{
-      True
-    } else {
-      // incorrect data structures should be spendable
-      True
-    }
-  // missing data structures should be spendable
-  None -> True
-}
-```
 
 ## Happy Path Setup
 
@@ -52,3 +38,22 @@ View the balances with all_balances.sh.
 Contracts should be set up now. Test by running 02_updateReferenceData.sh inside the reference folder. It should validate and submit. 
 
 Another good test is running the stake validations, 01_registerStake.sh and 02_delegateStake.sh, as they require a valid reference data.
+
+
+### V3 Specifics
+
+All spending validators follow this datum pattern:
+
+```rust
+when maybe_datum is {
+  Some(datum) ->
+    if datum is Datum{
+      validation_logic_here()
+    } else {
+      // incorrect data structures should be spendable
+      True
+    }
+  // missing data structures should be spendable
+  None -> True
+}
+```

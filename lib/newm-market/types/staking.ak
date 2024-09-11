@@ -4,4 +4,5 @@ pub type StakingRedeemer {
   Withdraw
   Delegate(ScriptHash)
   Register(ScriptHash)
+  UnRegister(ScriptHash)
 }
