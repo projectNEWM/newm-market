@@ -39,27 +39,15 @@ validator contract(ref_hash: ScriptHash) {
       MintBatcherToken -> {
         expect that_redeemer: BandLockUpRedeemer =
           find.redeemer_by_ref(redeemers, band_out_ref)
-        let is_correct_redeemer =
-          when that_redeemer is {
-            // must mint the batcher and complete set tokens
-            MintBand -> True
-            _ -> fail @"Must Use MintBand Redeemer"
-          }
-        // check that something is being spent from the band lock
-        is_correct_redeemer?
+        expect MintBand = that_redeemer
+        True
       }
       // must spend 1 thing from the band contract and use the burn band redeemer
       BurnBatcherToken -> {
         expect that_redeemer: BandLockUpRedeemer =
           find.redeemer_by_ref(redeemers, band_out_ref)
-        let is_correct_redeemer =
-          when that_redeemer is {
-            // must burn the batcher and complete set tokens
-            BurnBand(_) -> True
-            _ -> fail @"Must Use BurnBand Redeemer"
-          }
-        // check that something is being spent from the band lock
-        is_correct_redeemer?
+        expect BurnBand(_) = that_redeemer
+        True
       }
     }
   }

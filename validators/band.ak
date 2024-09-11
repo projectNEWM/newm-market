@@ -81,7 +81,6 @@ validator contract(
                 )?,
               }
             }
-            // add some members to the band if not full
             AddToBand { members } -> {
               let Transaction {
                 inputs,
@@ -135,7 +134,6 @@ validator contract(
                 )?,
               }
             }
-            // mint nft and lock full band
             MintBand -> {
               let Transaction {
                 inputs,
@@ -240,7 +238,6 @@ validator contract(
                 )?,
               }
             }
-            // burn nft and unlock full band back to owner
             BurnBand(tkn_ending) -> {
               let Transaction { inputs, reference_inputs, mint, .. } =
                 transaction
