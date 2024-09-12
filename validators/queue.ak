@@ -77,8 +77,10 @@ validator contract(
                   ref_datum.profit_data.profit_margin == 0,
                   sale_datum.cost.pid != usd_policy_id,
                 } {
+                  // profit is zero, cost is just the cost as defined in datum
                   (0, sale_datum.cost)
                 } else {
+                  // we need to use the oracle feed
                   let feed_addr: Address =
                     address.from_script(ref_datum.profit_data.feed_vkh)
                   let feed_input: Input =
@@ -96,12 +98,16 @@ validator contract(
                     // oracle moment needs to be valid
                     moment.is_contained(feed_moment, validity_range)?,
                   } {
+                    // the oracle is valid
+                    //
+                    // the amount of profit newm gets
                     let amt: Int =
                       oracle.calculate_profit(
                         ref_datum.profit_data.profit_margin,
                         feed_price,
                       )
                     if sale_datum.cost.pid == usd_policy_id {
+                      // using usd so do the calculation
                       let usd_amt: Int =
                         oracle.calculate_profit(sale_datum.cost.amt, feed_price)
                       (
@@ -113,6 +119,7 @@ validator contract(
                         },
                       )
                     } else {
+                      // else cost is cost as defined in datum
                       (amt, sale_datum.cost)
                     }
                   } else {
@@ -150,19 +157,10 @@ validator contract(
                   // get correct vault
                   expect that_vault_redeemer: VaultRedeemer =
                     find.redeemer_by_ref(redeemers, vault_out_ref)
-                  let is_correct_vault_redeemer: Bool =
-                    when that_vault_redeemer is {
-                      // only the purchase redeemer is allowed
-                      AddToVault(_) -> True
-                      _ -> fail @"Incorrect Vault Redeemer"
-                    }
+                  // the exact payment check should account for the tokens validaiton
+                  expect AddToVault(_) = that_vault_redeemer
                   // do the vault logic here since removing from queue is dependent on the newm_profit
-                  and {
-                    // vault gets the profit
-                    payout.exact(vault_addr, return_vault_value, outputs)?,
-                    // correct redeemer on the vault contract side
-                    is_correct_vault_redeemer?,
-                  }
+                  payout.exact(vault_addr, return_vault_value, outputs)?
                 }
               //
               // find the quantity of the bundle token on the sale utxo
@@ -230,12 +228,7 @@ validator contract(
               // get the correct sale
               expect that_sale_redeemer: SaleRedeemer =
                 find.redeemer_by_ref(redeemers, sale_out_ref)
-              let is_correct_sale_redeemer: Bool =
-                when that_sale_redeemer is {
-                  // only the purchase redeemer is allowed
-                  Purchase -> True
-                  _ -> fail @"Incorrect Sale Redeemer"
-                }
+              expect Purchase = that_sale_redeemer
               //
               //
               //
@@ -250,8 +243,6 @@ validator contract(
                 payout.exact(this_addr, return_queue_value, outputs)?,
                 // sale gets the cost
                 payout.exact(sale_addr, return_sale_value, outputs)?,
-                // correct redeemer on the sale contract side
-                is_correct_sale_redeemer?,
                 // keep the datum constant
                 (this_datum == that_datum)?,
                 // prove correct sale datum
