@@ -5,19 +5,24 @@ export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
 network=$(cat ../data/network.sh)
 
-# get params
+mkdir -p ../tmp
 ${cli} conway query protocol-parameters ${network} --out-file ../tmp/protocol.json
 
 # who will pay for the tx
 newm_address=$(cat ../wallets/newm-wallet/payment.addr)
+newm_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
 
 # collateral for stake contract
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
-stakeAddressDeposit=$(cat ../tmp/protocol.json | jq -r '.stakeAddressDeposit')
+drepAddressDeposit=$(cat ../tmp/protocol.json | jq -r '.dRepDeposit')
+jq -r \
+--argjson drepAddressDeposit "$drepAddressDeposit" \
+'.fields[1].int=$drepAddressDeposit' \
+../data/drep/register-redeemer.json | sponge ../data/drep/register-redeemer.json
 
-echo stakeAddressDeposit : $stakeAddressDeposit
+echo drepAddressDeposit : $drepAddressDeposit
 #
 # exit
 #
@@ -50,7 +55,7 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/stake-reference-utxo.signed )
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/drep-reference-utxo.signed )
 
 echo -e "\033[0;36m Building Tx \033[0m"
 FEE=$(${cli} conway transaction build \
@@ -58,15 +63,17 @@ FEE=$(${cli} conway transaction build \
     --change-address ${newm_address} \
     --tx-in-collateral="${collat_utxo}" \
     --tx-in ${newm_tx_in} \
-    --certificate ../../certs/stake.cert \
+    --certificate ../../certs/register.cert \
     --certificate-tx-in-reference="${script_ref_utxo}#1" \
     --certificate-plutus-script-v3 \
-    --certificate-reference-tx-in-redeemer-file ../data/staking/register-redeemer.json \
+    --certificate-reference-tx-in-redeemer-file ../data/drep/register-redeemer.json \
     --required-signer-hash ${collat_pkh} \
+    --required-signer-hash ${newm_pkh} \
     ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
+
 echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
 # exit

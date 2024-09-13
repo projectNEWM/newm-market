@@ -1,4 +1,4 @@
-use assist/types/token.{Tokens}
+use types/token.{Tokens}
 
 pub type VaultRedeemer {
   AddToVault { incoming: Tokens }

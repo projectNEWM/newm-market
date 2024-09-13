@@ -6,16 +6,16 @@ cli=$(cat ../data/path_to_cli.sh)
 network=$(cat ../data/network.sh)
 
 # get params
-${cli} query protocol-parameters ${network} --out-file ../tmp/protocol.json
+${cli} conway query protocol-parameters ${network} --out-file ../tmp/protocol.json
 
 # collateral for stake contract
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 # multisig
-keeper1_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
-keeper2_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
-keeper3_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
+keeper1_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
+keeper2_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
+keeper3_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
 
 # payee
 newm_address=$(cat ../wallets/newm-wallet/payment.addr)
@@ -23,7 +23,7 @@ newm_address=$(cat ../wallets/newm-wallet/payment.addr)
 # exit
 #
 echo -e "\033[0;36m Gathering Payee UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${newm_address} \
     --out-file ../tmp/newm_utxo.json
@@ -39,7 +39,7 @@ newm_tx_in=${TXIN::-8}
 
 # collat info
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -51,12 +51,11 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/stake-reference-utxo.signed )
-data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/stake-reference-utxo.signed )
+data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${newm_address} \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
@@ -64,7 +63,7 @@ FEE=$(${cli} transaction build \
     --tx-in ${newm_tx_in} \
     --certificate ../../certs/deleg.cert \
     --certificate-tx-in-reference="${script_ref_utxo}#1" \
-    --certificate-plutus-script-v2 \
+    --certificate-plutus-script-v3 \
     --certificate-reference-tx-in-redeemer-file ../data/staking/delegate-redeemer.json \
     --required-signer-hash ${collat_pkh} \
     --required-signer-hash ${keeper1_pkh} \
@@ -74,13 +73,12 @@ FEE=$(${cli} transaction build \
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
-FEE=${FEE[1]}
-echo -e "\033[1;32m Fee: \033[0m" $FEE
+echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/newm-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --signing-key-file ../wallets/keeper1-wallet/payment.skey \
@@ -93,9 +91,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

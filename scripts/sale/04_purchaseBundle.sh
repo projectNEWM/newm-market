@@ -10,15 +10,15 @@ stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 sale_script_path="../../contracts/sale_contract.plutus"
-sale_script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
+sale_script_address=$(${cli} conway address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # queue contract
 queue_script_path="../../contracts/queue_contract.plutus"
-queue_script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
+queue_script_address=$(${cli} conway address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # vault contract
 vault_script_path="../../contracts/vault_contract.plutus"
-vault_script_address=$(${cli} address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} ${network})
+vault_script_address=$(${cli} conway address build --payment-script-file ${vault_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # oracle feed
 # this needs to be better
@@ -30,17 +30,17 @@ feed_tkn=$(jq -r '.feedTkn' ../../config.json)
 
 # batcher, artist, buyer, collat
 batcher_address=$(cat ../wallets/batcher-wallet/payment.addr)
-batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
+batcher_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/batcher-wallet/payment.vkey)
 
 artist_address=$(cat ../wallets/artist-wallet/payment.addr)
-artist_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
+artist_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
 
 which_buyer="buyer1"
 buyer_address=$(cat ../wallets/${which_buyer}-wallet/payment.addr)
-buyer_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${which_buyer}-wallet/payment.vkey)
+buyer_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/${which_buyer}-wallet/payment.vkey)
 
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 # payment token
 newm_pid="769c4c6e9bc3ba5406b9b89fb7beb6819e638ff2e2de63f008d5bcff"
@@ -48,7 +48,7 @@ newm_tkn="744e45574d"
 
 # Get all the script and batcher utxos
 echo -e "\033[0;36m\nGathering Vault Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${vault_script_address} \
     ${network} \
     --out-file ../tmp/vault_script_utxo.json
@@ -63,7 +63,7 @@ vault_tx_in=${TXIN::-8}
 echo VAULT UTxO: $vault_tx_in
 
 echo -e "\033[0;36m Gathering Batcher UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${batcher_address} \
     ${network} \
     --out-file ../tmp/batcher_utxo.json
@@ -78,7 +78,7 @@ batcher_tx_in=${TXIN::-8}
 echo Batcher UTXO: ${batcher_tx_in}
 
 echo -e "\033[0;36m Gathering Queue Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${queue_script_address} \
     ${network} \
     --out-file ../tmp/queue_script_utxo.json
@@ -93,7 +93,7 @@ queue_tx_in=${TXIN::-8}
 echo QUEUE UTXO: ${queue_tx_in}
 
 echo -e "\033[0;36m Gathering Sale Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${sale_script_address} \
     ${network} \
     --out-file ../tmp/sale_script_utxo.json
@@ -108,7 +108,7 @@ sale_tx_in=$TXIN
 echo SALE UTXO ${sale_tx_in}
 
 echo -e "\033[0;36m Gathering Oracle Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${feed_addr} \
     ${network} \
     --out-file ../tmp/feed_utxo.json
@@ -124,7 +124,7 @@ echo Feed UTxO: $feed_tx_in
 
 # collat info
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -187,9 +187,9 @@ end_time=$(echo $feed_datum | jq -r '.fields[0].fields[0].map[2].v.int')
 # subtract a second from it so its forced to be contained
 delta=45
 timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${start_time} / 1000) + ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
-start_slot=$(${cli} query slot-number ${network} ${timestamp})
+start_slot=$(${cli} conway query slot-number ${network} ${timestamp})
 timestamp=$(python -c "import datetime; print(datetime.datetime.fromtimestamp((${end_time} / 1000) - ${delta}, tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
-end_slot=$(${cli} query slot-number ${network} ${timestamp})
+end_slot=$(${cli} conway query slot-number ${network} ${timestamp})
 echo Oracle Start: $start_slot
 echo Oralce End: $end_slot
 
@@ -274,16 +274,15 @@ echo "Queue OUTPUT:" ${queue_address_out}
 
 # exit
 
-sale_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
-queue_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/queue-reference-utxo.signed )
-vault_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/vault-reference-utxo.signed )
-data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
+sale_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
+queue_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/queue-reference-utxo.signed )
+vault_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/vault-reference-utxo.signed )
+data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
 execution_units="(0, 0)"
 
 echo -e "\033[0;36m Building Tx \033[0m"
-${cli} transaction build-raw \
-    --babbage-era \
+${cli} conway transaction build-raw \
     --protocol-params-file ../tmp/protocol.json \
     --out-file ../tmp/tx.draft \
     --invalid-before ${start_slot} \
@@ -294,19 +293,19 @@ ${cli} transaction build-raw \
     --tx-in ${batcher_tx_in} \
     --tx-in ${sale_tx_in} \
     --spending-tx-in-reference="${sale_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/sale/purchase-redeemer.json \
     --tx-in ${queue_tx_in} \
     --spending-tx-in-reference="${queue_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
     --tx-in ${vault_tx_in} \
     --spending-tx-in-reference="${vault_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
@@ -384,7 +383,7 @@ vault_computation_fee=$(echo "0.0000721*${cpu} + 0.0577*${mem}" | bc)
 vault_computation_fee_int=$(printf "%.0f" "$vault_computation_fee")
 echo $vault_execution_units
 
-FEE=$(${cli} transaction calculate-min-fee \
+FEE=$(${cli} conway transaction calculate-min-fee \
     --tx-body-file ../tmp/tx.draft \
     --protocol-params-file ../tmp/protocol.json \
     --witness-count 3)
@@ -398,8 +397,7 @@ echo "With Fee: Queue Script OUTPUT: "${queue_address_out}
 #
 # exit
 #
-${cli} transaction build-raw \
-    --babbage-era \
+${cli} conway transaction build-raw \
     --protocol-params-file ../tmp/protocol.json \
     --out-file ../tmp/tx.draft \
     --invalid-before ${start_slot} \
@@ -410,19 +408,19 @@ ${cli} transaction build-raw \
     --tx-in ${batcher_tx_in} \
     --tx-in ${sale_tx_in} \
     --spending-tx-in-reference="${sale_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${sale_execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/sale/purchase-redeemer.json \
     --tx-in ${queue_tx_in} \
     --spending-tx-in-reference="${queue_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${queue_execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/queue/purchase-redeemer.json \
     --tx-in ${vault_tx_in} \
     --spending-tx-in-reference="${vault_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-execution-units="${vault_execution_units}" \
     --spending-reference-tx-in-redeemer-file ../data/vault/add-to-vault-redeemer.json \
@@ -440,7 +438,7 @@ ${cli} transaction build-raw \
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/batcher-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
@@ -450,11 +448,11 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx
 
 cp ../tmp/tx.signed ../tmp/last-sale-utxo.signed

@@ -1,6 +1,14 @@
-use assist/types/hashes.{ValidatorHash}
+use aiken/crypto.{ScriptHash}
+use cardano/assets.{Lovelace}
 
-pub type WithdrawRedeemer {
+pub type StakingRedeemer {
   Withdraw
-  Delegate(ValidatorHash)
+  DelegateStake(ScriptHash)
+  RegisterStake(ScriptHash)
+  UnRegisterStake(ScriptHash)
+  DelegateDRep(ScriptHash)
+  RegisterDRep(ScriptHash, Lovelace)
+  UnRegisterDRep(ScriptHash, Lovelace)
+  UpdateDRep(ScriptHash)
+  CastVote
 }

@@ -1,5 +1,5 @@
-use assist/types/token.{Token, Tokens}
-use assist/types/wallet.{Wallet}
+use types/token.{Token, Tokens}
+use types/wallet.{Wallet}
 
 // the sale datum
 pub type SaleDatum {

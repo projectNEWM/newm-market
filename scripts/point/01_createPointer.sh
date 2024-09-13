@@ -6,7 +6,7 @@ cli=$(cat ../data/path_to_cli.sh)
 network=$(cat ../data/network.sh)
 
 # get params
-${cli} query protocol-parameters ${network} --out-file ../tmp/protocol.json
+${cli} conway query protocol-parameters ${network} --out-file ../tmp/protocol.json
 
 # staking contract
 # stake_script_path="../../contracts/stake_contract.plutus"
@@ -14,30 +14,30 @@ stake_script_path="stake_test17rq3egpkklttva2h2g8kfrnrm57j3duraqqcgkh8s2uuw4q7ph
 
 # cip 68 contract
 storage_script_path="../../contracts/storage_contract.plutus"
-# storage_script_address=$(${cli} address build --payment-script-file ${storage_script_path} --stake-script-file ${stake_script_path} ${network})
+# storage_script_address=$(${cli} conway address build --payment-script-file ${storage_script_path} --stake-script-file ${stake_script_path} ${network})
 storage_script_address="addr_test1xzpq3mqglyyrqce7fgh725ra2tp8hv2kssx0kx6ul6gxhskprjsrdd7kke64w5s0vj8x8hfa9zmc86qps3dw0q4eca2q8r9cjd"
 
 # bundle sale contract
 sale_script_path="../../contracts/sale_contract.plutus"
-# sale_script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
-sale_script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-address ${stake_script_path} ${network})
+# sale_script_address=$(${cli} conway address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
+sale_script_address=$(${cli} conway address build --payment-script-file ${sale_script_path} --stake-address ${stake_script_path} ${network})
 
 #
 newm_address=$(cat ../wallets/newm-wallet/payment.addr)
-newm_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
+newm_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
 
 #
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 #
 receiver_address=$(cat ../wallets/artist-wallet/payment.addr)
-receiver_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
+receiver_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
 
 # the minting script policy
 policy_id=$(cat ../../hashes/pointer_policy.hash)
 
 echo -e "\033[0;36m Gathering NEWM UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${receiver_address} \
     --out-file ../tmp/newm_utxo.json
@@ -67,7 +67,7 @@ echo -n $pointer_name > ../tmp/pointer.token
 
 MINT_ASSET="1 ${policy_id}.${pointer_name}"
 
-# UTXO_VALUE=$(${cli} transaction calculate-min-required-utxo \
+# UTXO_VALUE=$(${cli} conway transaction calculate-min-required-utxo \
 #     --babbage-era \
 #     --protocol-params-file ../tmp/protocol.json \
 #     --tx-out="${newm_address} + 5000000 + ${MINT_ASSET}" | tr -dc '0-9')
@@ -79,8 +79,7 @@ worst_case_token="9223372036854775807 015d83f25700c83d708fbf8ad57783dc257b01a932
 + 9223372036854775807 115d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d.015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d00000000
 + 9223372036854775807 215d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d.015d83f25700c83d708fbf8ad57783dc257b01a932ffceac9dcd0c3d00000000
 "
-UTXO_VALUE=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
+UTXO_VALUE=$(${cli} conway transaction calculate-min-required-utxo \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/sale/sale-datum.json \
     --tx-out="${sale_script_address} + 5000000 + ${worst_case_token}" | tr -dc '0-9')
@@ -99,7 +98,7 @@ echo "Pointer Mint OUTPUT:" ${pointer_address_out}
 # exit
 #
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -110,14 +109,13 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
-# data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
+# data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
 data_ref_utxo="8472ae5dd6ff4620ec563f7b00ebd05ba24119274fa69a6e7f015bfaa657ebeb"
 
 # Add metadata to this build function for nfts with data
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${receiver_address} \
     --tx-in-collateral="${collat_utxo}" \
@@ -129,20 +127,19 @@ FEE=$(${cli} transaction build \
     --required-signer-hash ${newm_pkh} \
     --mint="${MINT_ASSET}" \
     --mint-tx-in-reference="${script_ref_utxo}#1" \
-    --mint-plutus-script-v2 \
+    --mint-plutus-script-v3 \
     --policy-id="${policy_id}" \
     --mint-reference-tx-in-redeemer-file ../data/mint/mint-redeemer.json \
     ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
-FEE=${FEE[1]}
-echo -e "\033[1;32m Fee: \033[0m" $FEE
+echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/artist-wallet/payment.skey \
     --signing-key-file ../wallets/newm-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
@@ -153,9 +150,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

@@ -10,7 +10,7 @@ stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 queue_script_path="../../contracts/queue_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
+script_address=$(${cli} conway address build --payment-script-file ${queue_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # collat, buyer, reference
 
@@ -20,7 +20,7 @@ issuer_address=$(cat ../wallets/${issuer_path}/payment.addr)
 # issuer order for
 buyer_path="buyer2-wallet"
 buyer_address=$(cat ../wallets/${buyer_path}/payment.addr)
-buyer_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/${buyer_path}/payment.vkey)
+buyer_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/${buyer_path}/payment.vkey)
 
 max_bundle_size=$(jq -r '.fields[3].int' ../data/sale/sale-datum.json)
 if [[ $# -eq 0 ]] ; then
@@ -81,16 +81,14 @@ echo "Maximum Gas Fee:" $gas
 
 # check if its ada or not
 if [ -z "$queue_value" ]; then
-    min_utxo_value=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
+    min_utxo_value=$(${cli} conway transaction calculate-min-required-utxo \
         --protocol-params-file ../tmp/protocol.json \
         --tx-out-inline-datum-file ../data/queue/queue-datum.json \
         --tx-out="${script_address} + 5000000" | tr -dc '0-9')
     adaPay=$((${min_utxo_value} + ${payAmt} + ${gas}))
     script_address_out="${script_address} + ${adaPay}"
 else
-    min_utxo_value=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
+    min_utxo_value=$(${cli} conway transaction calculate-min-required-utxo \
         --protocol-params-file ../tmp/protocol.json \
         --tx-out-inline-datum-file ../data/queue/queue-datum.json \
         --tx-out="${script_address} + 5000000 + ${queue_value}" | tr -dc '0-9')
@@ -100,7 +98,7 @@ fi
 
 
 echo -e "\033[0;36m Gathering Issuer UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${issuer_address} \
     --out-file ../tmp/issuer_utxo.json
@@ -128,8 +126,7 @@ fi
 assets=$(python3 -c "import sys; sys.path.append('../../lib/py/'); from subtract_value_string import subtract_value; subtract_value('${assets}', 20000000, 1000000)")
 # echo $assets
 
-min_utxo_value=$(${cli} transaction calculate-min-required-utxo \
-        --babbage-era \
+min_utxo_value=$(${cli} conway transaction calculate-min-required-utxo \
         --protocol-params-file ../tmp/protocol.json \
         --tx-out="${issuer_address} + 5000000 + ${assets}" | tr -dc '0-9')
 
@@ -142,8 +139,7 @@ echo "Script OUTPUT: "${script_address_out}
 #
     # --tx-out="${change_address_out}" \
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${issuer_address} \
     --tx-in ${issuer_tx_in} \
@@ -153,13 +149,12 @@ FEE=$(${cli} transaction build \
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
-FEE=${FEE[1]}
-echo -e "\033[1;32m Fee: \033[0m" $FEE
+echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/${issuer_path}/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
@@ -168,9 +163,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

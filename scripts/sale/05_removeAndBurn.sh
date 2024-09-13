@@ -10,15 +10,15 @@ stake_script_path="../../contracts/stake_contract.plutus"
 
 # bundle sale contract
 sale_script_path="../../contracts/sale_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
+script_address=$(${cli} conway address build --payment-script-file ${sale_script_path} --stake-script-file ${stake_script_path} ${network})
 
 # collat, artist, reference
 artist_address=$(cat ../wallets/artist-wallet/payment.addr)
-artist_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
+artist_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/artist-wallet/payment.vkey)
 
 #
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
-collat_pkh=$(${cli} address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
+collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
 pid=$(jq -r '.fields[1].fields[0].bytes' ../data/sale/sale-datum.json)
 tkn=$(jq -r '.fields[1].fields[1].bytes' ../data/sale/sale-datum.json)
@@ -30,7 +30,7 @@ pointer_tkn=$(cat ../tmp/pointer.token)
 default_asset="${total_amt} ${pid}.${tkn}"
 
 echo -e "\033[0;36m Gathering Script UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     --address ${script_address} \
     ${network} \
     --out-file ../tmp/script_utxo.json
@@ -55,7 +55,7 @@ fi
 # exit
 #
 echo -e "\033[0;36m Gathering Seller UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${artist_address} \
     --out-file ../tmp/artist_utxo.json
@@ -69,7 +69,7 @@ TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../tmp/artist
 artist_tx_in=${TXIN::-8}
 
 echo -e "\033[0;36m Gathering Collateral UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${collat_address} \
     --out-file ../tmp/collat_utxo.json
@@ -80,13 +80,12 @@ if [ "${TXNS}" -eq "0" ]; then
 fi
 collat_utxo=$(jq -r 'keys[0]' ../tmp/collat_utxo.json)
 
-script_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
-data_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed )
-pointer_ref_utxo=$(${cli} transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
+script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/sale-reference-utxo.signed )
+data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
+pointer_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/pointer-reference-utxo.signed)
 
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${artist_address} \
     --read-only-tx-in-reference="${data_ref_utxo}#0" \
@@ -94,12 +93,12 @@ FEE=$(${cli} transaction build \
     --tx-in ${artist_tx_in} \
     --tx-in ${script_tx_in} \
     --spending-tx-in-reference="${script_ref_utxo}#1" \
-    --spending-plutus-script-v2 \
+    --spending-plutus-script-v3 \
     --spending-reference-tx-in-inline-datum-present \
     --spending-reference-tx-in-redeemer-file ../data/sale/remove-redeemer.json \
     --mint="${pointer_asset}" \
     --mint-tx-in-reference="${pointer_ref_utxo}#1" \
-    --mint-plutus-script-v2 \
+    --mint-plutus-script-v3 \
     --policy-id="${pointer_pid}" \
     --mint-reference-tx-in-redeemer-file ../data/pointer/burn-redeemer.json \
     --required-signer-hash ${artist_pkh} \
@@ -108,13 +107,12 @@ FEE=$(${cli} transaction build \
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
-FEE=${FEE[1]}
-echo -e "\033[1;32m Fee: \033[0m" $FEE
+echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/artist-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
@@ -124,9 +122,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/tx.signed)
 echo "Tx Hash:" $tx

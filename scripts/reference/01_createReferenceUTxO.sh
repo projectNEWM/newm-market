@@ -6,11 +6,11 @@ cli=$(cat ../data/path_to_cli.sh)
 network=$(cat ../data/network.sh)
 
 # get current params
-${cli} query protocol-parameters ${network} --out-file ../tmp/protocol.json
+${cli} conway query protocol-parameters ${network} --out-file ../tmp/protocol.json
 
 # staked smart contract address
 script_path="../../contracts/reference_contract.plutus"
-script_address=$(${cli} address build --payment-script-file ${script_path} ${network})
+script_address=$(${cli} conway address build --payment-script-file ${script_path} ${network})
 
 # seller info
 starter_address=$(cat ../wallets/starter-wallet/payment.addr)
@@ -23,8 +23,7 @@ policy_id=$(jq -r '.starterPid' ../../config.json)
 token_name=$(jq -r '.starterTkn' ../../config.json)
 asset="1 ${policy_id}.${token_name}"
 
-min_value=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
+min_value=$(${cli} conway transaction calculate-min-required-utxo \
     --protocol-params-file ../tmp/protocol.json \
     --tx-out-inline-datum-file ../data/reference/reference-datum.json \
     --tx-out="${script_address} + 5000000 + ${asset}" | tr -dc '0-9')
@@ -36,7 +35,7 @@ echo "Script OUTPUT: "${script_address_out}
 #
 echo -e "\033[0;36m Gathering UTxO Information  \033[0m"
 # get utxo
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${starter_address} \
     --out-file ../tmp/starter_utxo.json
@@ -52,8 +51,7 @@ TXIN=$(jq -r --arg alltxin "" --arg policy_id "$policy_id" --arg token_name "$to
 starter_tx_in=${TXIN::-8}
 
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
     --change-address ${change_address} \
     --tx-in ${starter_tx_in} \
@@ -63,13 +61,12 @@ FEE=$(${cli} transaction build \
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
-FEE=${FEE[1]}
-echo -e "\033[1;32m Fee: \033[0m" $FEE
+echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
 # exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../wallets/starter-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/referenceable-tx.signed \
@@ -78,9 +75,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../tmp/referenceable-tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../tmp/referenceable-tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed)
 echo "Tx Hash:" $tx

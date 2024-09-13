@@ -15,6 +15,11 @@ newm_address=$(cat ../wallets/newm-wallet/payment.addr)
 collat_address=$(cat ../wallets/collat-wallet/payment.addr)
 collat_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/collat-wallet/payment.vkey)
 
+# multisig
+keeper1_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
+keeper2_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
+keeper3_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
+
 stakeAddressDeposit=$(cat ../tmp/protocol.json | jq -r '.stakeAddressDeposit')
 
 echo stakeAddressDeposit : $stakeAddressDeposit
@@ -58,11 +63,14 @@ FEE=$(${cli} conway transaction build \
     --change-address ${newm_address} \
     --tx-in-collateral="${collat_utxo}" \
     --tx-in ${newm_tx_in} \
-    --certificate ../../certs/stake.cert \
+    --certificate ../../certs/destake.cert \
     --certificate-tx-in-reference="${script_ref_utxo}#1" \
     --certificate-plutus-script-v3 \
-    --certificate-reference-tx-in-redeemer-file ../data/staking/register-redeemer.json \
+    --certificate-reference-tx-in-redeemer-file ../data/staking/unregister-redeemer.json \
     --required-signer-hash ${collat_pkh} \
+    --required-signer-hash ${keeper1_pkh} \
+    --required-signer-hash ${keeper2_pkh} \
+    --required-signer-hash ${keeper3_pkh} \
     ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
@@ -75,6 +83,9 @@ echo -e "\033[0;36m Signing \033[0m"
 ${cli} conway transaction sign \
     --signing-key-file ../wallets/newm-wallet/payment.skey \
     --signing-key-file ../wallets/collat-wallet/payment.skey \
+    --signing-key-file ../wallets/keeper1-wallet/payment.skey \
+    --signing-key-file ../wallets/keeper2-wallet/payment.skey \
+    --signing-key-file ../wallets/keeper3-wallet/payment.skey \
     --tx-body-file ../tmp/tx.draft \
     --out-file ../tmp/tx.signed \
     ${network}

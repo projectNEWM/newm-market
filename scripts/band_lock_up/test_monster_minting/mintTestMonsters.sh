@@ -14,10 +14,10 @@ mint_path1="./policy1.script"
 mint_path2="./policy2.script"
 
 batcher_address=$(cat ../../wallets/batcher-wallet/payment.addr)
-batcher_pkh=$(${cli} address key-hash --payment-verification-key-file ../../wallets/batcher-wallet/payment.vkey)
+batcher_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../../wallets/batcher-wallet/payment.vkey)
 
-policy_id1=$(${cli} transaction policyid --script-file ${mint_path1})
-policy_id2=$(${cli} transaction policyid --script-file ${mint_path2})
+policy_id1=$(${cli} conway transaction policyid --script-file ${mint_path1})
+policy_id2=$(${cli} conway transaction policyid --script-file ${mint_path2})
 
 # assets
 mint_asset1="
@@ -48,8 +48,7 @@ mint_asset2="
 minted_assets=$(echo "${mint_asset1} + ${mint_asset2}" | tr -d '\n')
 
 # mint utxo
-utxo_value=$(${cli} transaction calculate-min-required-utxo \
-    --babbage-era \
+utxo_value=$(${cli} conway transaction calculate-min-required-utxo \
     --protocol-params-file ../../tmp/protocol.json \
     --tx-out="${batcher_address} + 2000000 + ${mint_asset1} + ${mint_asset2}" | tr -dc '0-9')
 
@@ -59,7 +58,7 @@ echo "Mint OUTPUT: "${batcher_address_out}
 # exit
 #
 echo -e "\033[0;36m Gathering User UTxO Information  \033[0m"
-${cli} query utxo \
+${cli} conway query utxo \
     ${network} \
     --address ${batcher_address} \
     --out-file ../../tmp/batcher_utxo.json
@@ -74,14 +73,13 @@ TXIN=$(jq -r --arg alltxin "" 'keys[] | . + $alltxin + " --tx-in"' ../../tmp/bat
 batcher_tx_in=${TXIN::-8}
 
 # slot contraints
-slot=$(${cli} query tip ${network} | jq .slot)
+slot=$(${cli} conway query tip ${network} | jq .slot)
 current_slot=$(($slot - 1))
 final_slot=$(($slot + 2500))
 
 # exit
 echo -e "\033[0;36m Building Tx \033[0m"
-FEE=$(${cli} transaction build \
-    --babbage-era \
+FEE=$(${cli} conway transaction build \
     --out-file ../../tmp/tx.draft \
     --invalid-before ${current_slot} \
     --invalid-hereafter ${final_slot} \
@@ -95,13 +93,12 @@ FEE=$(${cli} transaction build \
 
 IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
-FEE=${FEE[1]}
-echo -e "\033[1;32m Fee: \033[0m" $FEE
+echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
-exit
+# exit
 #
 echo -e "\033[0;36m Signing \033[0m"
-${cli} transaction sign \
+${cli} conway transaction sign \
     --signing-key-file ../../wallets/batcher-wallet/payment.skey \
     --tx-body-file ../../tmp/tx.draft \
     --out-file ../../tmp/tx.signed \
@@ -110,9 +107,9 @@ ${cli} transaction sign \
 # exit
 #
 echo -e "\033[0;36m Submitting \033[0m"
-${cli} transaction submit \
+${cli} conway transaction submit \
     ${network} \
     --tx-file ../../tmp/tx.signed
 
-tx=$(${cli} transaction txid --tx-file ../../tmp/tx.signed)
+tx=$(${cli} conway transaction txid --tx-file ../../tmp/tx.signed)
 echo "Tx Hash:" $tx

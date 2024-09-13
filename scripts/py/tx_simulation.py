@@ -91,7 +91,14 @@ def query_tx_with_koios(hashes: list[str], network: bool) -> list[dict]:
     subdomain = "api" if network is True else "preprod"
 
     json_data = {
-        '_tx_hashes': hashes
+        '_tx_hashes': hashes,
+        '_inputs': True,
+        "_metadata": True,
+        "_assets": True,
+        "_withdrawals": True,
+        "_certs": True,
+        "_scripts": True,
+        "_bytecode": True
     }
 
     headers = {
@@ -126,7 +133,8 @@ def resolve_inputs_and_outputs(tx_cbor: str, network: bool) -> tuple[list[tuple[
         txBody = data[0]
 
         # all the types of inputs; tx inputs, collateral, and reference
-        inputs = txBody[0] + txBody[13] + txBody[18]
+        # inputs = txBody[0] + txBody[13] + txBody[18]
+        inputs = list(txBody[0]) + list(txBody[13]) + list(txBody[18])
         # convert into list of tuples
         inputs = [(utxo[0].hex(), int(utxo[1])) for utxo in inputs]
     except KeyError:
@@ -209,6 +217,7 @@ def build_resolved_output(tx_id: str, tx_idx: int, outputs: list[dict], network:
     """
     resolved = {}
     for txo in outputs['outputs']:
+        # print(txo)
         output_tx_id = txo['tx_hash']
         output_tx_idx = txo['tx_index']
 
@@ -267,7 +276,7 @@ def build_resolved_output(tx_id: str, tx_idx: int, outputs: list[dict], network:
             if txo['reference_script'] is not None:
                 # assume plutus v2 reference scripts
                 cbor_ref = to_bytes(txo['reference_script']['bytes'])
-                cbor_ref = to_bytes(cbor2.dumps([2, cbor_ref]).hex())
+                cbor_ref = to_bytes(cbor2.dumps([3, cbor_ref]).hex())
 
                 # put the reference script in the correct format
                 resolved[3] = cbor2.CBORTag(24, cbor_ref)
@@ -383,9 +392,9 @@ def from_cbor(tx_cbor: str, network: bool, debug: bool = False, aiken_path: str 
 
     # attempt to debug if required
     if debug is True:
-        # print(tx_cbor, '\n')
-        # print(input_cbor, '\n')
-        # print(output_cbor, '\n')
+        print(tx_cbor, '\n')
+        print(input_cbor, '\n')
+        print(output_cbor, '\n')
         pass
 
     # try to simulate the tx and return the results else return an empty dict
