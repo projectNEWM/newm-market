@@ -145,7 +145,7 @@ ${cli} conway transaction build-raw \
     --tx-out="${buyer_address_out}" \
     --fee ${fee}
 
-echo -e "\033[1;32m Fee: \033[0m" $fee
+echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
 # exit
 #

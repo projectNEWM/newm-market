@@ -33,27 +33,25 @@ validator contract(
     when maybe_datum is {
       Some(this_datum) ->
         if this_datum is SaleDatum {
-          let Transaction {
-            inputs,
-            outputs,
-            reference_inputs,
-            fee,
-            mint,
-            extra_signatories,
-            redeemers,
-            ..
-          } = transaction
-          // data reference stuff
-          let ref_addr: Address = address.from_script(ref_hash)
-          let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
-          expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
-          // the input being validated
-          let this_input: Input = find.input_by_ref(inputs, output_reference)
-          let this_value: Value = this_input.output.value
-          let this_address: Address = this_input.output.address
           when redeemer is {
             // Buyer can purchase a bundle from the UTxO
             Purchase -> {
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                redeemers,
+                ..
+              } = transaction
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_address: Address = this_input.output.address
               // The queue address
               let queue_addr: Address =
                 addresses.create_script_address(
@@ -69,17 +67,11 @@ validator contract(
               // this should fail for bad data serialization
               expect that_redeemer: QueueRedeemer =
                 find.redeemer_by_ref(redeemers, queue_out_ref)
-              let is_correct_redeemer: Bool =
-                when that_redeemer is {
-                  QueuePurchase -> True
-                  _ -> fail @"Incorrect Queue Redeemer"
-                }
+              expect QueuePurchase = that_redeemer
               //
               //
               //
               and {
-                // correct redeemer on the queue side
-                is_correct_redeemer?,
                 // single script input
                 count.inputs_by_addr(inputs, queue_addr, 1)?,
                 // single script output
@@ -98,6 +90,24 @@ validator contract(
             }
             // mint a pointer token to start off a sale
             StartSale { pointer } -> {
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                fee,
+                mint,
+                ..
+              } = transaction
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              let this_address: Address = this_input.output.address
               // add the pointer token and remove the fee
               let that_value: Value =
                 assets.add(this_value, ref_datum.pointer, pointer.tkn, 1)
@@ -138,6 +148,23 @@ validator contract(
             }
             // Transform the sale by some token
             TransformSale { transforms } -> {
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                extra_signatories,
+                ..
+              } = transaction
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              let this_address: Address = this_input.output.address
               // this value is transformed into that value
               let that_value: Value =
                 token.add_tokens_to_value(this_value, transforms)
@@ -170,6 +197,23 @@ validator contract(
             }
             // Owner can remove their UTxO by burning the pointer
             RemoveSale -> {
+              let Transaction {
+                inputs,
+                reference_inputs,
+                mint,
+                extra_signatories,
+                ..
+              } = transaction
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              let this_address: Address = this_input.output.address
               // check if the pointer token needs to be burned or not
               let burn_pointer_token: Bool =
                 if value.prove_nft(this_value, ref_datum.pointer) {

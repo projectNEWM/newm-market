@@ -35,27 +35,31 @@ validator contract(
     when maybe_datum is {
       Some(this_datum) ->
         if this_datum is Wallet {
-          let Transaction {
-            inputs,
-            outputs,
-            reference_inputs,
-            extra_signatories,
-            mint,
-            ..
-          } = transaction
-          // the input being validated
-          let this_input: Input = find.input_by_ref(inputs, output_reference)
-          let this_value: Value = this_input.output.value
-          // data reference stuff
-          let ref_addr: Address = address.from_script(ref_hash)
-          // find the first reference input
-          let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
-          // the reference this_datum
-          expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
           when redeemer is {
-            // remove utxo back to owner if not full
             RemoveBand -> {
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                extra_signatories,
+                ..
+              } = transaction
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              // find the first reference input
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              // the reference this_datum
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
               let owner_addr: Address = addresses.from_wallet(this_datum)
+              //
+              // Remove the band if not complete by sending the currently locked
+              // band to the owner's address.
+              //
               and {
                 // owner must sign it
                 tx.verify_signature(extra_signatories, this_datum.pkh)?,
@@ -63,8 +67,6 @@ validator contract(
                 payout.exact(owner_addr, this_value, outputs)?,
                 // single script input
                 count.inputs_by_vkh(inputs, 1)?,
-                // no script outputs
-                count.outputs_by_vkh(outputs, 0)?,
                 // anything but a complete set can be removed
                 !value.prove_exact_nft(
                   this_value,
@@ -79,13 +81,34 @@ validator contract(
                 )?,
               }
             }
-            // add some members to the band if not full
             AddToBand { members } -> {
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                extra_signatories,
+                ..
+              } = transaction
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              // find the first reference input
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              // the reference this_datum
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
               let that_value: Value =
                 this_value |> token.add_tokens_to_value(members)
               let this_addr: Address = this_input.output.address
               expect that_datum: Wallet =
                 find.output_datum_by_addr(outputs, this_addr)
+              //
+              // Add members to an incomplete band. The owner can add as many 
+              // band members as needed. Members can be removed if required.
+              //
               and {
                 // this_datum cant change
                 (this_datum == that_datum)?,
@@ -111,8 +134,26 @@ validator contract(
                 )?,
               }
             }
-            // mint nft and lock full band
             MintBand -> {
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                extra_signatories,
+                mint,
+                ..
+              } = transaction
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              // find the first reference input
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              // the reference this_datum
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
               let this_addr: Address = this_input.output.address
               // get the list of token names from the monster pid
               let token_names1: List<AssetName> =
@@ -156,7 +197,8 @@ validator contract(
                       1,
                     )
               //
-              //
+              // Mints the completed asset token and a batcher certificate to
+              // the owner of the UTxO.
               //
               and {
                 // datums cant change
@@ -196,17 +238,31 @@ validator contract(
                 )?,
               }
             }
-            // burn nft and unlock full band back to owner
             BurnBand(tkn_ending) -> {
+              let Transaction { inputs, reference_inputs, mint, .. } =
+                transaction
+              // the input being validated
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              let this_value: Value = this_input.output.value
+              // data reference stuff
+              let ref_addr: Address = address.from_script(ref_hash)
+              // find the first reference input
+              let ref_input: Input =
+                find.input_by_addr(reference_inputs, ref_addr)
+              // the reference this_datum
+              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
               // check if something is being minted here
               let mint_list: List<(PolicyId, AssetName, Int)> =
                 mint
                   |> assets.flatten()
+              //
+              // Burns a complete asset and batcher cerificate that have matching
+              // token endings.
+              //
               and {
                 // single script input
                 count.inputs_by_vkh(inputs, 1)?,
-                // no script outputs
-                count.outputs_by_vkh(outputs, 0)?,
                 // burn exactly 1 batcher token
                 minting.exact(
                   mint_list,

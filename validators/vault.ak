@@ -31,23 +31,18 @@ validator contract(
     when maybe_datum is {
       Some(this_datum) ->
         if this_datum is Wallet {
-          // the transaction being validated
-          let Transaction {
-            inputs,
-            outputs,
-            reference_inputs,
-            extra_signatories,
-            ..
-          } = transaction
-          // the input being spent
-          let this_input: Input = find.input_by_ref(inputs, output_reference)
-          // this value being spent
-          let this_value: Value = this_input.output.value
-          // this address being spent from
-          let this_addr: Address = this_input.output.address
           when redeemer is {
-            // anyone can add funds to the vault
             AddToVault { incoming } -> {
+              // the transaction being validated
+              let Transaction { inputs, outputs, extra_signatories, .. } =
+                transaction
+              // the input being spent
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              // this value being spent
+              let this_value: Value = this_input.output.value
+              // this address being spent from
+              let this_addr: Address = this_input.output.address
               // the datum going back to the vault
               expect that_datum: Wallet =
                 find.output_datum_by_addr(outputs, this_addr)
@@ -55,7 +50,9 @@ validator contract(
               let that_value: Value =
                 this_value |> token.add_tokens_to_value(incoming)
               //
-              //
+              // Only the owner of the vault may add tokens to the vault. There
+              // must always be at least the vault minimum lovelace, which is
+              // always owned by the owner.
               //
               and {
                 // the batcher deposit can not be removed
@@ -63,7 +60,7 @@ validator contract(
                 // hot key must sign
                 tx.verify_signature(extra_signatories, this_datum.pkh)?,
                 // datum can't change
-                this_datum == that_datum,
+                (this_datum == that_datum)?,
                 // can only add a token
                 token.addition_only(incoming)?,
                 // send at least that value to this address
@@ -74,8 +71,22 @@ validator contract(
                 count.outputs_by_addr(outputs, this_addr, 1)?,
               }
             }
-            // only those with enough action tokens may subtract from the vault
             SubFromVault { outgoing } -> {
+              // the transaction being validated
+              let Transaction {
+                inputs,
+                outputs,
+                reference_inputs,
+                extra_signatories,
+                ..
+              } = transaction
+              // the input being spent
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              // this value being spent
+              let this_value: Value = this_input.output.value
+              // this address being spent from
+              let this_addr: Address = this_input.output.address
               // the datum going back to the vault
               expect that_datum: Wallet =
                 find.output_datum_by_addr(outputs, this_addr)
@@ -89,7 +100,9 @@ validator contract(
               expect ref_data_datum: ReferenceDatum =
                 datum.input_datum(ref_data_input)
               //
-              //
+              // Only the hot key can subtract tokens from the vault. There
+              // be at least the vault minimum lovelace leftover after 
+              // subtraction. This maintains the minimum lovelace for the owner.
               //
               and {
                 // the batcher deposit can not be removed
@@ -114,8 +127,22 @@ validator contract(
                 count.outputs_by_addr(outputs, this_addr, 1)?,
               }
             }
-            // remove the vault if and only if the minimum required lovelace exists
-            RemoveVault -> and {
+            RemoveVault -> {
+              // the transaction being validated
+              let Transaction { inputs, extra_signatories, .. } = transaction
+              // the input being spent
+              let this_input: Input =
+                find.input_by_ref(inputs, output_reference)
+              // this value being spent
+              let this_value: Value = this_input.output.value
+              // this address being spent from
+              let this_addr: Address = this_input.output.address
+              //
+              // Only the owner of the vault may remove the vault entirely if
+              // and only if the minimum required lovelace exists on the UTxO.
+              // No other tokens may exist. The owner may send the UTxO anywhere.
+              //
+              and {
                 // there can only be a single policy ADA
                 (( assets.policies(this_value) |> list.length ) == 1)?,
                 // the amount of lovelace must be the minimum
@@ -125,6 +152,7 @@ validator contract(
                 // single script input
                 count.inputs_by_addr(inputs, this_addr, 1)?,
               }
+            }
           }
         } else {
           // incorrect data structures should be spendable

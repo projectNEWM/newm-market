@@ -23,15 +23,20 @@ validator contract(
     currency_symbol: PolicyId,
     transaction: Transaction,
   ) {
-    // the transaction being validated
-    let Transaction { inputs, reference_inputs, extra_signatories, mint, .. } =
-      transaction
-    let mint_list: List<(PolicyId, AssetName, Int)> =
-      mint
-        |> assets.flatten()
     when redeemer is {
       // this can not have destination validation due to lexico cbor
       MintPointerToken -> {
+        // the transaction being validated
+        let Transaction {
+          inputs,
+          reference_inputs,
+          extra_signatories,
+          mint,
+          ..
+        } = transaction
+        let mint_list: List<(PolicyId, AssetName, Int)> =
+          mint
+            |> assets.flatten()
         // data reference stuff
         let ref_addr: Address = address.from_script(ref_hash)
         let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
@@ -59,7 +64,12 @@ validator contract(
         }
       }
       // burn a single pointer token
-      BurnPointerToken ->
+      BurnPointerToken -> {
+        // the transaction being validated
+        let Transaction { mint, .. } = transaction
+        let mint_list: List<(PolicyId, AssetName, Int)> =
+          mint
+            |> assets.flatten()
         minting.by_prefix(
           mint_list,
           currency_symbol,
@@ -67,6 +77,7 @@ validator contract(
           prefixes.callable,
           -1,
         )?
+      }
     }
   }
 
