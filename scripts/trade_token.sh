@@ -7,12 +7,12 @@ cli=$(cat ./data/path_to_cli.sh)
 network=$(cat ./data/network.sh)
 
 # Addresses
-sender_path="wallets/artist-wallet/"
+sender_path="wallets/batcher-wallet/"
 sender_address=$(cat ${sender_path}payment.addr)
 # receiver_address=$(cat wallets/seller-wallet/payment.addr)
 # receiver_address=${sender_address}
-receiver_address=$(jq -r '.starterChangeAddr' ../config.json)
-# receiver_address="addr_test1vqvcpfj8lulfsy22rlxzv2ksykvauahqhztfn5wyzyrlwug3sh9xa"
+# receiver_address=$(jq -r '.starterChangeAddr' ../config.json)
+receiver_address="addr_test1vqvcpfj8lulfsy22rlxzv2ksykvauahqhztfn5wyzyrlwug3sh9xa"
 #
 # exit
 #

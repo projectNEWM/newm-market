@@ -60,7 +60,7 @@ do
     --tx-out="${reference_address} + ${changeAmount}" \
     --tx-out="${script_reference_utxo}" \
     --tx-out-reference-script-file ${contract} \
-    --fee 0
+    --fee 1000000
 
     # this can't be correct...
     size=$(jq -r '.cborHex' ${contract} | awk '{print length($0)*4}')
@@ -90,9 +90,10 @@ do
         --out-file ./tmp/${first_word}-reference-utxo.signed \
         ${network}
 
-    ref_tx_in=$(${cli} conway transaction txid --tx-body-file ./tmp/tx.draft)#0
+    txid=$(${cli} conway transaction txid --tx-body-file ./tmp/tx.draft)
+    ref_tx_in=${txid}#0
     echo 
-    echo -e "\033[0;36mNext UTxO: $ref_tx_in \033[0m"
+    echo -e "\033[0;36mScript UTxO: ${txid}#1 \033[0m"
 done
 
 echo -e "\033[1;37m --------------------------------------------------------------------------------\033[0m"
