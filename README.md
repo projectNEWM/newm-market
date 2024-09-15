@@ -85,6 +85,72 @@ Required Tokens:
 
 Totalling 11 Tokens
 
-The easiest method is following the happy path in the band_lock_up folder.
+The easiest method is following the happy path in the band_lock_up folder. Before the band is locked, the UTxO is owned by the wallet defined in the band lock datum. First, update the `band-lock-datum.json` file in the scripts/data/band_lock folder. The top field is the payment credential and the bottom field is the stake credential.
+
+For example, an address in bech32:
+
+`addr_test1qrvnxkaylr4upwxfxctpxpcumj0fl6fdujdc72j8sgpraa9l4gu9er4t0w7udjvt2pqngddn6q4h8h3uv38p8p9cq82qav4lmp`
+
+Has the hex form:
+
+`00d9335ba4f8ebc0b8c9361613071cdc9e9fe92de49b8f2a4782023ef4bfaa385c8eab7bbdc6c98b50413435b3d02b73de3c644e1384b801d4`
+
+Remove the network tag, the first byte, and split into two equal parts of length 56 as shown below.
+
+```json
+{
+  "constructor": 0,
+  "fields": [
+    {
+      "bytes": "d9335ba4f8ebc0b8c9361613071cdc9e9fe92de49b8f2a4782023ef4"
+    },
+    {
+      "bytes": "bfaa385c8eab7bbdc6c98b50413435b3d02b73de3c644e1384b801d4"
+    }
+  ]
+}
+```
+
+Enterprise addresses should leave the bottom field, the stake credential, an empty string.
+
+Next, enter the band_lock_up folder and create the band lock UTxO with `01_createBandUTxO.sh`. This UTxO will only contain ADA. Before the band is locked, the UTxO may be removed with `02_removeBandUTxO.sh` if and only if the wallet defined in the datum signs the transaction and recieves the entire UTxO back to that address.
+
+The wallet being used to lock the band should only have Lovelace and the required tokens, as the happy path assumes the simple case. The `03_addToBandUTxO.sh` script will add all tokens to the band lock UTxO. At, this point the band is still removeable.
+
+The final step is locking the band by minting the completed assets token and the batcher certificate token. The completed asset token lives with the locked band and the batcher token is sent to the wallet. These two tokens are connected. To unlock a specific band, the correct batcher certificate must be burned along with the corresponding completed asset token. This allows the batcher certificate token to be traded but the ownership to be perserved. The band can then be unlocked with the `05_burnBatcherToken.sh` script.
+
+A single UTxO containing at least 5 ADA and the batcher certificate token must exist at the batcher address for the batcher to function properly.
 
 ## Setting Up Vault UTxOs
+
+A batcher is expected to have at least one vault UTxO. It is recommended to have two to delay_depth+1 vault UTxOs. A batcher with many vaults will reduce the chance of a depth delay cooldown via a profit accumulation transaction. Each vault UTxO will hold a datum with the batcher wallet information. If the batcher is setup with the setup guide then it will be just an enterprise address and the datum, located in the data/vault folder, will have the following form.
+
+A batcher address in bech32:
+
+`addr_test1vqvcpfj8lulfsy22rlxzv2ksykvauahqhztfn5wyzyrlwug3sh9xa`
+
+Has the hex form:
+
+`601980a647ff3e98114a1fcc262ad02599de76e0b89699d1c41107f771`
+
+Remove the first byte, the network tag, and the payment credential reveals itself. Leave the stake credential as a blank string when using an enterprise address.
+
+```json
+{
+  "constructor": 0,
+  "fields": [
+    {
+      "bytes": "1980a647ff3e98114a1fcc262ad02599de76e0b89699d1c41107f771"
+    },
+    {
+      "bytes": ""
+    }
+  ]
+}
+```
+
+It is the same form as the band lock UTxO.
+
+Each vault UTxO requires 10 ADA. This ADA is always owned by the batcher and can never be removed by anyone else. With at least 20 ADA plus fees required for the transaction, run the `01_createVault.sh` script in the vault folder. This will produce two vault UTxOs for the batcher defined in the datum file. The batcher will automatically find this UTxOs during the sync process.
+
+A batcher holding a batcher certificate with at least one vault UTxO is ready to batch orders for the marketplace.
