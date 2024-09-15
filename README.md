@@ -25,11 +25,11 @@ mkdir wallets
 
 Enter the data folder and update the `path_to_socket.sh` file to point at the node socket. The `network.sh` file defaults to preprod.
 
-**mainnet launches require additional reference datum updates**
+**mainnet launches require additional reference datum updates and steps**
 
 View the balances with `all_balances.sh`. 
 
-Steps to set up:
+Steps to set up marketplace on preprod:
 
 1. Start by funding the starter-wallet with 10 ADA, collat-wallet with 5 ADA, newm-wallet with 25 ADA, and reference-wallet with 350 ADA
 2. Enter the starter-token folder inside scripts, run `mintStarterToken.sh`, and hit enter to mint a starter token.
@@ -52,38 +52,42 @@ Locking a band requires having one of each token prefix from the two policy ids 
 
 `e92f13e647afa0691006fb98833b60b61e6eb88d6180e7537bdb94a6`
 
-Required Tokens:
+Required tokens:
 
-- NEWMonsterDJ
-- NEWMonsterFlamenco 
-- NEWMonsterHeavyMetal
-- NEWMonsterHelloWorld
-- NEWMonsterHipHop
-- NEWMonsterJazz
-- NEWMonsterOpera
-- NEWMonsterPianist
-- NEWMonsterReggae
-- NEWMonsterRock
+- **NEWMonsterDJ**
+- **NEWMonsterFlamenco**
+- **NEWMonsterHeavyMetal**
+- **NEWMonsterHelloWorld**
+- **NEWMonsterHipHop**
+- **NEWMonsterJazz**
+- **NEWMonsterOpera**
+- **NEWMonsterPianist**
+- **NEWMonsterReggae**
+- **NEWMonsterRock**
 
-Totalling 10 Tokens
+A total of 10 tokens.
+
+---
 
 `b3e0f7538ba97893b0fea85409cecfbf300d164954da2728406bb571`
 
-Required Tokens:
+Required tokens:
 
-- NEWMonsterConductor
-- NEWMonsterCountry
-- NEWMonsterDisco
-- NEWMonsterDoubleBass
-- NEWMonsterDrummer
-- NEWMonsterKPop
-- NEWMonsterPercussion
-- NEWMonsterPunk
-- NEWMonsterRanchera
-- NEWMonsterSongwriter
-- NEWMonsterSwissLandler
+- **NEWMonsterConductor**
+- **NEWMonsterCountry**
+- **NEWMonsterDisco**
+- **NEWMonsterDoubleBass**
+- **NEWMonsterDrummer**
+- **NEWMonsterKPop**
+- **NEWMonsterPercussion**
+- **NEWMonsterPunk**
+- **NEWMonsterRanchera**
+- **NEWMonsterSongwriter**
+- **NEWMonsterSwissLandler**
 
-Totalling 11 Tokens
+A total of 11 tokens.
+
+A complete band set is 21 tokens from two policy ids.
 
 ### Locking The Band
 
@@ -125,7 +129,7 @@ For the batcher to function properly, a single UTxO containing at least 5 ADA an
 
 ## Setting Up Vault UTxOs
 
-A batcher should have at least one vault UTxO. We recommend that the batcher has two vault UTxOs and up to delay_depth + 1 vault UTxOs. A batcher with many vaults will reduce the chance of a depth delay cooldown via a profit accumulation transaction. Each vault UTxO will hold a datum with the batcher wallet information. If you follow the batcher setup guide, then the batcher will be just an enterprise address, and the datum in the data/vault folder will have the following form:
+A batcher should have at least one vault UTxO. We recommend that the batcher has two vault UTxOs and up to $delay\_depth + 1$ vault UTxOs. A batcher with many vaults will reduce the chance of a depth delay cooldown via a profit accumulation transaction. Each vault UTxO will hold a datum with the batcher wallet information. If you follow the batcher setup guide, then the batcher will be just an enterprise address, and the datum in the data/vault folder will have the following form:
 
 A batcher address in bech32:
 
