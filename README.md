@@ -4,7 +4,7 @@ The NEWM Marketplace contracts allow the selling of stream tokens for NEWM or US
 
 ## Quick Happy Path Setup
 
-A quick and dirty setup guide for the happy path.
+This is a quick and dirty setup guide for the happy path. It is not extensive but just serves as a baseline to get things started.
 
 We will need some wallets to run everything. Enter the scripts folder and run the command below.
 
@@ -23,7 +23,7 @@ mkdir wallets
 ./create_wallet.sh wallets/starter-wallet
 ```
 
-Enter the data folder and update the `path_to_socket.sh` file to point at the node socket. The `network.sh` file is currently set to preprod.
+Enter the data folder and update the `path_to_socket.sh` file to point at the node socket. The `network.sh` file defaults to preprod.
 
 **mainnet launches require additional reference datum updates**
 
@@ -32,23 +32,23 @@ View the balances with `all_balances.sh`.
 Steps to set up:
 
 1. Start by funding the starter-wallet with 10 ADA, collat-wallet with 5 ADA, newm-wallet with 25 ADA, and reference-wallet with 350 ADA
-2. Enter the starter-token folder inside of scripts and run `mintStarterToken.sh`, hit enter to mint a starter token.
-3. Update `config.json` in the parent folder with starter token information, update the change address as required.
+2. Enter the starter-token folder inside scripts, run `mintStarterToken.sh`, and hit enter to mint a starter token.
+3. Update `config.json` in the parent folder with starter token information and update the change address as required.
 4. Run `complete_build.sh` in the parent folder to compile the contracts with Aiken.
-5. Enter the scripts folder and run `00_createScriptReferences.sh`, wait for the transactions to hit the chain.
-6. Enter the reference folder and run `01_createReferenceUTxO.sh`, wait for the transactions to hit the chain.
+5. Enter the scripts folder and run `00_createScriptReferences.sh`, then wait for the transactions to hit the chain.
+6. Enter the reference folder and run `01_createReferenceUTxO.sh`, then wait for the transactions to hit the chain.
 
-Contracts should be set up now. Test by running `02_updateReferenceData.sh` inside the reference folder. It should validate and submit. 
+Following these steps will properly set up the marketplace contracts. Test by running `02_updateReferenceData.sh` inside the reference folder. The transaction should be able to validate and submit on-chain. 
 
 # Batcher Configuration
 
-This section is dedicated to setting up a batcher as it requires locking up a complete set of band tokens and creating a few vault UTxOs.
+This section is dedicated to setting up a batcher, as it requires locking up a complete set of band tokens and creating a few vault UTxOs.
 
 ## NEWM Monster Band Lock Up
 
-Locking a band requires having 1 of each token prefix from the two policy ids below.
+Locking a band requires having one of each token prefix from the two policy ids below.
 
-Official NEWMonster Policy IDs
+### Official NEWMonster Policy IDs
 
 `e92f13e647afa0691006fb98833b60b61e6eb88d6180e7537bdb94a6`
 
@@ -85,7 +85,9 @@ Required Tokens:
 
 Totalling 11 Tokens
 
-The easiest method is following the happy path in the band_lock_up folder. Before the band is locked, the UTxO is owned by the wallet defined in the band lock datum. First, update the `band-lock-datum.json` file in the scripts/data/band_lock folder. The top field is the payment credential and the bottom field is the stake credential.
+### Locking The Band
+
+The easiest method is following the happy path in the band_lock_up folder. Before the band is locked, the UTxO is owned by the wallet defined in the band lock datum. First, update the `band-lock-datum.json` file in the scripts/data/band_lock folder. The top field is the payment credential, and the bottom field is the stake credential.
 
 For example, an address in bech32:
 
@@ -111,19 +113,19 @@ Remove the network tag, the first byte, and split into two equal parts of length
 }
 ```
 
-Enterprise addresses should leave the bottom field, the stake credential, an empty string.
+Enterprise addresses should leave the bottom field, the stake credential, as an empty string.
 
-Next, enter the band_lock_up folder and create the band lock UTxO with `01_createBandUTxO.sh`. This UTxO will only contain ADA. Before the band is locked, the UTxO may be removed with `02_removeBandUTxO.sh` if and only if the wallet defined in the datum signs the transaction and recieves the entire UTxO back to that address.
+Next, enter the band_lock_up folder and create the band lock UTxO with the `01_createBandUTxO.sh` script. This UTxO will only contain ADA. Before the band is locked, the UTxO may be removed with the `02_removeBandUTxO.sh` script if the wallet defined in the datum signs the transaction and receives the entire UTxO back to that address.
 
-The wallet being used to lock the band should only have Lovelace and the required tokens, as the happy path assumes the simple case. The `03_addToBandUTxO.sh` script will add all tokens to the band lock UTxO. At, this point the band is still removeable.
+The wallet to lock the band should only have Lovelace and the required tokens, as the happy path assumes the simple case. The `03_addToBandUTxO.sh` script will add all tokens to the band lock UTxO. At this point, the band is still removable.
 
-The final step is locking the band by minting the completed assets token and the batcher certificate token. The completed asset token lives with the locked band and the batcher token is sent to the wallet. These two tokens are connected. To unlock a specific band, the correct batcher certificate must be burned along with the corresponding completed asset token. This allows the batcher certificate token to be traded but the ownership to be perserved. The band can then be unlocked with the `05_burnBatcherToken.sh` script.
+The final step is locking the band by minting the completed asset token and the batcher certificate token. The completed asset token lives with the locked band, but the batcher certificate token does not have destination validation. These two tokens are connected thus the owner of a batcher certificate must find the corresponding completed asset token to burn the tokens together to unlock a specific band. The batcher certificate token may be traded and sold, as the validation logic preserves ownership of the originally locked band.
 
-A single UTxO containing at least 5 ADA and the batcher certificate token must exist at the batcher address for the batcher to function properly.
+For the batcher to function properly, a single UTxO containing at least 5 ADA and the batcher certificate token must exist at the batcher address.
 
 ## Setting Up Vault UTxOs
 
-A batcher is expected to have at least one vault UTxO. It is recommended to have two to delay_depth+1 vault UTxOs. A batcher with many vaults will reduce the chance of a depth delay cooldown via a profit accumulation transaction. Each vault UTxO will hold a datum with the batcher wallet information. If the batcher is setup with the setup guide then it will be just an enterprise address and the datum, located in the data/vault folder, will have the following form.
+A batcher should have at least one vault UTxO. We recommend that the batcher has two vault UTxOs and up to delay_depth + 1 vault UTxOs. A batcher with many vaults will reduce the chance of a depth delay cooldown via a profit accumulation transaction. Each vault UTxO will hold a datum with the batcher wallet information. If you follow the batcher setup guide, then the batcher will be just an enterprise address, and the datum in the data/vault folder will have the following form:
 
 A batcher address in bech32:
 
@@ -151,6 +153,6 @@ Remove the first byte, the network tag, and the payment credential reveals itsel
 
 It is the same form as the band lock UTxO.
 
-Each vault UTxO requires 10 ADA. This ADA is always owned by the batcher and can never be removed by anyone else. With at least 20 ADA plus fees required for the transaction, run the `01_createVault.sh` script in the vault folder. This will produce two vault UTxOs for the batcher defined in the datum file. The batcher will automatically find this UTxOs during the sync process.
+Each vault UTxO requires 10 ADA. The batcher always owns this ADA and can never be removed by anyone else. With at least 20 ADA plus fees for the transaction, run the `01_createVault.sh` script in the vault folder. The script will produce two vault UTxOs for the batcher defined in the datum file. The batcher will automatically find these UTxOs during the sync process.
 
 A batcher holding a batcher certificate with at least one vault UTxO is ready to batch orders for the marketplace.
