@@ -129,7 +129,7 @@ For the batcher to function properly, a single UTxO containing at least 5 ADA an
 
 ## Setting Up Vault UTxOs
 
-A batcher should have at least one vault UTxO. We recommend that the batcher has two vault UTxOs and up to $delay\_depth + 1$ vault UTxOs. A batcher with many vaults will reduce the chance of a depth delay cooldown via a profit accumulation transaction. Each vault UTxO will hold a datum with the batcher wallet information. If you follow the batcher setup guide, then the batcher will be just an enterprise address, and the datum in the data/vault folder will have the following form:
+A batcher should have at least one vault UTxO. We recommend that the batcher has two vault UTxOs and up to delay_depth+1 vault UTxOs. A batcher with many vaults will reduce the chance of a depth delay cooldown via a profit accumulation transaction. Each vault UTxO will hold a datum with the batcher wallet information. If you follow the batcher setup guide, then the batcher will be just an enterprise address, and the datum in the data/vault folder will have the following form:
 
 A batcher address in bech32:
 
