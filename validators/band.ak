@@ -10,6 +10,7 @@ use cardano/minting
 use cardano/transaction.{Input, OutputReference, Transaction, TransactionId}
 use cardano/tx
 use cardano/value
+use newm_market/backup
 use newm_market/constants
 use newm_market/types/band.{
   AddToBand, BandLockUpRedeemer, BurnBand, MintBand, RemoveBand,
@@ -300,10 +301,16 @@ validator contract(
           }
         } else {
           // incorrect data structures should be spendable
-          True
+          let Transaction { reference_inputs, extra_signatories, .. } =
+            transaction
+          backup.logic(ref_hash, reference_inputs, extra_signatories)?
         }
       // missing data structures should be spendable
-      None -> True
+      None -> {
+        let Transaction { reference_inputs, extra_signatories, .. } =
+          transaction
+        backup.logic(ref_hash, reference_inputs, extra_signatories)?
+      }
     }
   }
 
