@@ -303,13 +303,27 @@ validator contract(
           // incorrect data structures should be spendable
           let Transaction { reference_inputs, extra_signatories, .. } =
             transaction
-          backup.logic(ref_hash, reference_inputs, extra_signatories)?
+          let ref_data_addr: Address = address.from_script(ref_hash)
+          backup.logic(
+            ref_data_addr,
+            reference_inputs,
+            extra_signatories,
+            starter_pid,
+            starter_tkn,
+          )?
         }
       // missing data structures should be spendable
       None -> {
         let Transaction { reference_inputs, extra_signatories, .. } =
           transaction
-        backup.logic(ref_hash, reference_inputs, extra_signatories)?
+        let ref_data_addr: Address = address.from_script(ref_hash)
+        backup.logic(
+          ref_data_addr,
+          reference_inputs,
+          extra_signatories,
+          starter_pid,
+          starter_tkn,
+        )?
       }
     }
   }
