@@ -45,8 +45,6 @@ FEE=$(${cli} conway transaction build \
     --tx-in ${batcher_tx_in} \
     --tx-out="${script_address_out}" \
     --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
-    --tx-out="${script_address_out}" \
-    --tx-out-inline-datum-file ../data/vault/vault-datum.json  \
     ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
