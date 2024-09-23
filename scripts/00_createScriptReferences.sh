@@ -12,7 +12,7 @@ mkdir -p ./tmp
 ${cli} conway query protocol-parameters ${network} --out-file ./tmp/protocol.json
 
 # Addresses
-reference_wallet_name="reference-wallet"
+reference_wallet_name="newm-wallet"
 reference_address=$(cat ./wallets/${reference_wallet_name}/payment.addr)
 script_reference_address=$(cat ./wallets/reference-wallet/payment.addr)
 
