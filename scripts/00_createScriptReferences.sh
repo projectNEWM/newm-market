@@ -63,7 +63,7 @@ do
     --fee 1000000
 
     # this can't be correct...
-    size=$(jq -r '.cborHex' ${contract} | awk '{print length($0)*4}')
+    size=$(jq -r '.cborHex' ${contract} | awk '{print length($0)*6}')
 
     FEE=$(${cli} conway transaction calculate-min-fee \
         --tx-body-file ./tmp/tx.draft \

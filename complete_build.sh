@@ -27,7 +27,7 @@ echo -e "\033[1;34m Building Contracts \033[0m"
 aiken build --trace-level silent --filter-traces user-defined
 
 # keep the traces
-#aiken build --trace-level verbose --filter-traces all
+# aiken build --trace-level verbose --filter-traces all
 
 # the reference token
 pid=$(jq -r '.starterPid' config.json)

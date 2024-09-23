@@ -4,6 +4,7 @@ use cardano/assets.{AssetName, PolicyId, Value}
 use cardano/transaction.{Input, OutputReference, Transaction}
 use cardano/tx
 use cardano/value
+use newm_market/backup
 use newm_market/types/reference.{ReferenceDatum}
 use types/wallet
 use validation/count
@@ -61,10 +62,32 @@ validator contract(starter_pid: PolicyId, starter_tkn: AssetName) {
           }
         } else {
           // incorrect data structures should be spendable
-          True
+          let Transaction { inputs, reference_inputs, extra_signatories, .. } =
+            transaction
+          let this_input: Input = find.input_by_ref(inputs, output_reference)
+          let this_addr: Address = this_input.output.address
+          backup.logic(
+            this_addr,
+            reference_inputs,
+            extra_signatories,
+            starter_pid,
+            starter_tkn,
+          )?
         }
       // missing data structures should be spendable
-      None -> True
+      None -> {
+        let Transaction { inputs, reference_inputs, extra_signatories, .. } =
+          transaction
+        let this_input: Input = find.input_by_ref(inputs, output_reference)
+        let this_addr: Address = this_input.output.address
+        backup.logic(
+          this_addr,
+          reference_inputs,
+          extra_signatories,
+          starter_pid,
+          starter_tkn,
+        )?
+      }
     }
   }
 
