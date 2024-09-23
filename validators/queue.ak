@@ -6,6 +6,7 @@ use cardano/datum
 use cardano/transaction.{Input, OutputReference, Transaction}
 use cardano/tx
 use cardano/value
+use newm_market/backup
 use newm_market/constants.{usd_policy_id}
 use newm_market/types/oracle.{OracleDatum}
 use newm_market/types/queue.{
@@ -174,9 +175,7 @@ validator contract(
                 // allows for a partial bundle to be fulfilled
                 // if the current number of bundles is less than what the queue wants
                 // then get the leftover for a part fill else get what you want
-                if
-                cur_bundle_tkn_amt / sale_datum.bundle.amt < this_datum.number_of_bundles{
-                
+                if cur_bundle_tkn_amt / sale_datum.bundle.amt < this_datum.number_of_bundles {
                   // so get the left over
                   cur_bundle_tkn_amt / sale_datum.bundle.amt
                 } else {
@@ -372,8 +371,7 @@ validator contract(
                 )
               // check the state of the sale with a queue item.
               let is_refund_allowed: Bool =
-                if
-                // Can the queue entry even pay for the token bundle if you removed 
+                if // Can the queue entry even pay for the token bundle if you removed 
                 // the incentive and what would be the profit?
                 assets.quantity_of(
                   this_value
@@ -389,8 +387,7 @@ validator contract(
                       ),
                   total_cost.pid,
                   total_cost.tkn,
-                ) >= total_cost.amt{
-                
+                ) >= total_cost.amt {
                   // The queue entry could pay for some amount of bundles if they exist.
                   //
                   // Does the current sale have enough tokens for at least 1 bundle
@@ -485,10 +482,30 @@ validator contract(
           }
         } else {
           // incorrect data structures should be spendable
-          True
+          let Transaction { reference_inputs, extra_signatories, .. } =
+            transaction
+          let ref_data_addr: Address = address.from_script(ref_hash)
+          backup.logic(
+            ref_data_addr,
+            reference_inputs,
+            extra_signatories,
+            starter_pid,
+            starter_tkn,
+          )?
         }
       // missing data structures should be spendable
-      None -> True
+      None -> {
+        let Transaction { reference_inputs, extra_signatories, .. } =
+          transaction
+        let ref_data_addr: Address = address.from_script(ref_hash)
+        backup.logic(
+          ref_data_addr,
+          reference_inputs,
+          extra_signatories,
+          starter_pid,
+          starter_tkn,
+        )?
+      }
     }
   }
 

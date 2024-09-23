@@ -72,18 +72,14 @@ test prefix_doesnt_exists_in_token_name() fail {
 }
 
 test empty_token_names_empty_prefixes() {
-  let prefixes: List<ByteArray> =
-    []
-  let token_names: List<ByteArray> =
-    []
+  let prefixes: List<ByteArray> = []
+  let token_names: List<ByteArray> = []
   has_correct_tokens(token_names, prefixes)
 }
 
 test empty_token_names_single_prefixes() fail {
-  let prefixes: List<ByteArray> =
-    [#"acab"]
-  let token_names: List<ByteArray> =
-    []
+  let prefixes: List<ByteArray> = [#"acab"]
+  let token_names: List<ByteArray> = []
   has_correct_tokens(token_names, prefixes)
 }
 
