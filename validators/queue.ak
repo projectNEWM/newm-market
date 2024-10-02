@@ -33,33 +33,31 @@ validator contract(
     output_reference: OutputReference,
     transaction: Transaction,
   ) {
+    // the transaction being validated
+    let Transaction {
+      inputs,
+      outputs,
+      reference_inputs,
+      fee,
+      redeemers,
+      validity_range,
+      extra_signatories,
+      ..
+    } = transaction
+    // data reference stuff
+    let ref_addr: Address = address.from_script(ref_hash)
+    let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
+    expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+    // the input being validated
+    let this_input: Input = find.input_by_ref(inputs, output_reference)
     when maybe_datum is {
       Some(this_datum) ->
         if this_datum is QueueDatum {
           when redeemer is {
             // a batcher can complete a purchase from the queue, for profit
             QueuePurchase -> {
-              // the transaction being validated
-              let Transaction {
-                inputs,
-                outputs,
-                reference_inputs,
-                fee,
-                redeemers,
-                validity_range,
-                ..
-              } = transaction
-              // the input being validated
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
               let this_value: Value = this_input.output.value
               let this_addr: Address = this_input.output.address
-              //
-              // data reference stuff
-              let ref_addr: Address = address.from_script(ref_hash)
-              let ref_input: Input =
-                find.input_by_addr(reference_inputs, ref_addr)
-              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
               //
               // sale stuff
               let sale_addr: Address =
@@ -276,27 +274,8 @@ validator contract(
             }
             // a batcher can auto refund a completed queue item, not for profit
             QueueRefund -> {
-              // the transaction being validated
-              let Transaction {
-                inputs,
-                outputs,
-                reference_inputs,
-                fee,
-                validity_range,
-                ..
-              } = transaction
-              // the reference this_datum
-              // the input being validated
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
               let this_value: Value = this_input.output.value
               let this_addr: Address = this_input.output.address
-              //
-              // data reference stuff
-              let ref_addr: Address = address.from_script(ref_hash)
-              let ref_input: Input =
-                find.input_by_addr(reference_inputs, ref_addr)
-              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
               //
               // sale stuff
               let sale_addr: Address =
@@ -462,12 +441,6 @@ validator contract(
             }
             // a buyer may always remove their queue item at any time
             QueueCancel -> {
-              // the transaction being validated
-              let Transaction { inputs, extra_signatories, .. } = transaction
-              // the reference this_datum
-              // the input being validated
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
               let this_addr: Address = this_input.output.address
               //
               //
@@ -482,11 +455,8 @@ validator contract(
           }
         } else {
           // incorrect data structures should be spendable
-          let Transaction { reference_inputs, extra_signatories, .. } =
-            transaction
-          let ref_data_addr: Address = address.from_script(ref_hash)
           backup.logic(
-            ref_data_addr,
+            ref_addr,
             reference_inputs,
             extra_signatories,
             starter_pid,
@@ -494,18 +464,14 @@ validator contract(
           )?
         }
       // missing data structures should be spendable
-      None -> {
-        let Transaction { reference_inputs, extra_signatories, .. } =
-          transaction
-        let ref_data_addr: Address = address.from_script(ref_hash)
+      None ->
         backup.logic(
-          ref_data_addr,
+          ref_addr,
           reference_inputs,
           extra_signatories,
           starter_pid,
           starter_tkn,
         )?
-      }
     }
   }
 
