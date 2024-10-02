@@ -18,17 +18,17 @@ validator contract(starter_pid: PolicyId, starter_tkn: AssetName) {
     output_reference: OutputReference,
     transaction: Transaction,
   ) {
+    // tx being validated
+    let Transaction { inputs, reference_inputs, outputs, extra_signatories, .. } =
+      transaction
+    let this_input: Input = find.input_by_ref(inputs, output_reference)
+    let this_addr: Address = this_input.output.address
     when maybe_datum is {
       Some(datum) ->
         if datum is ReferenceDatum {
-          // tx being validated
-          let Transaction { inputs, outputs, extra_signatories, .. } =
-            transaction
-          let this_input: Input = find.input_by_ref(inputs, output_reference)
           // this should allow the lovelace to change naturally with the updates
           let that_value: Value =
             this_input.output.value |> assets.without_lovelace
-          let this_addr: Address = this_input.output.address
           expect that_datum: ReferenceDatum =
             find.output_datum_by_addr(outputs, this_addr)
           //
@@ -62,10 +62,6 @@ validator contract(starter_pid: PolicyId, starter_tkn: AssetName) {
           }
         } else {
           // incorrect data structures should be spendable
-          let Transaction { inputs, reference_inputs, extra_signatories, .. } =
-            transaction
-          let this_input: Input = find.input_by_ref(inputs, output_reference)
-          let this_addr: Address = this_input.output.address
           backup.logic(
             this_addr,
             reference_inputs,
@@ -75,11 +71,7 @@ validator contract(starter_pid: PolicyId, starter_tkn: AssetName) {
           )?
         }
       // missing data structures should be spendable
-      None -> {
-        let Transaction { inputs, reference_inputs, extra_signatories, .. } =
-          transaction
-        let this_input: Input = find.input_by_ref(inputs, output_reference)
-        let this_addr: Address = this_input.output.address
+      None ->
         backup.logic(
           this_addr,
           reference_inputs,
@@ -87,7 +79,6 @@ validator contract(starter_pid: PolicyId, starter_tkn: AssetName) {
           starter_pid,
           starter_tkn,
         )?
-      }
     }
   }
 

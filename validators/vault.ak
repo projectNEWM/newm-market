@@ -29,21 +29,20 @@ validator contract(
     output_reference: OutputReference,
     transaction: Transaction,
   ) {
+    // the transaction being validated
+    let Transaction { inputs, outputs, reference_inputs, extra_signatories, .. } =
+      transaction
+    // the input being spent
+    let this_input: Input = find.input_by_ref(inputs, output_reference)
+    // this value being spent
+    let this_value: Value = this_input.output.value
+    // this address being spent from
+    let this_addr: Address = this_input.output.address
     when maybe_datum is {
       Some(this_datum) ->
         if this_datum is Wallet {
           when redeemer is {
             AddToVault { incoming } -> {
-              // the transaction being validated
-              let Transaction { inputs, outputs, extra_signatories, .. } =
-                transaction
-              // the input being spent
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
-              // this value being spent
-              let this_value: Value = this_input.output.value
-              // this address being spent from
-              let this_addr: Address = this_input.output.address
               // the datum going back to the vault
               expect that_datum: Wallet =
                 find.output_datum_by_addr(outputs, this_addr)
@@ -73,21 +72,6 @@ validator contract(
               }
             }
             SubFromVault { outgoing } -> {
-              // the transaction being validated
-              let Transaction {
-                inputs,
-                outputs,
-                reference_inputs,
-                extra_signatories,
-                ..
-              } = transaction
-              // the input being spent
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
-              // this value being spent
-              let this_value: Value = this_input.output.value
-              // this address being spent from
-              let this_addr: Address = this_input.output.address
               // the datum going back to the vault
               expect that_datum: Wallet =
                 find.output_datum_by_addr(outputs, this_addr)
@@ -128,16 +112,7 @@ validator contract(
                 count.outputs_by_addr(outputs, this_addr, 1)?,
               }
             }
-            RemoveVault -> {
-              // the transaction being validated
-              let Transaction { inputs, extra_signatories, .. } = transaction
-              // the input being spent
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
-              // this value being spent
-              let this_value: Value = this_input.output.value
-              // this address being spent from
-              let this_addr: Address = this_input.output.address
+            RemoveVault ->
               //
               // Only the owner of the vault may remove the vault entirely if
               // and only if the minimum required lovelace exists on the UTxO.
@@ -153,12 +128,9 @@ validator contract(
                 // single script input
                 count.inputs_by_addr(inputs, this_addr, 1)?,
               }
-            }
           }
         } else {
           // incorrect data structures should be spendable
-          let Transaction { reference_inputs, extra_signatories, .. } =
-            transaction
           let ref_data_addr: Address = address.from_script(ref_hash)
           backup.logic(
             ref_data_addr,
@@ -170,8 +142,6 @@ validator contract(
         }
       // missing data structures should be spendable
       None -> {
-        let Transaction { reference_inputs, extra_signatories, .. } =
-          transaction
         let ref_data_addr: Address = address.from_script(ref_hash)
         backup.logic(
           ref_data_addr,

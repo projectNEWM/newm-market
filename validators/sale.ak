@@ -31,27 +31,29 @@ validator contract(
     output_reference: OutputReference,
     transaction: Transaction,
   ) {
+    // the transaction being validated
+    let Transaction {
+      inputs,
+      outputs,
+      reference_inputs,
+      redeemers,
+      extra_signatories,
+      fee,
+      mint,
+      ..
+    } = transaction
+    // data reference stuff
+    let ref_addr: Address = address.from_script(ref_hash)
+    let ref_input: Input = find.input_by_addr(reference_inputs, ref_addr)
+    expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
+    // the input being validated
+    let this_input: Input = find.input_by_ref(inputs, output_reference)
     when maybe_datum is {
       Some(this_datum) ->
         if this_datum is SaleDatum {
           when redeemer is {
             // Buyer can purchase a bundle from the UTxO
             Purchase -> {
-              let Transaction {
-                inputs,
-                outputs,
-                reference_inputs,
-                redeemers,
-                ..
-              } = transaction
-              // data reference stuff
-              let ref_addr: Address = address.from_script(ref_hash)
-              let ref_input: Input =
-                find.input_by_addr(reference_inputs, ref_addr)
-              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
-              // the input being validated
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
               let this_address: Address = this_input.output.address
               // The queue address
               let queue_addr: Address =
@@ -91,22 +93,6 @@ validator contract(
             }
             // mint a pointer token to start off a sale
             StartSale { pointer } -> {
-              let Transaction {
-                inputs,
-                outputs,
-                reference_inputs,
-                fee,
-                mint,
-                ..
-              } = transaction
-              // data reference stuff
-              let ref_addr: Address = address.from_script(ref_hash)
-              let ref_input: Input =
-                find.input_by_addr(reference_inputs, ref_addr)
-              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
-              // the input being validated
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
               let this_value: Value = this_input.output.value
               let this_address: Address = this_input.output.address
               // add the pointer token and remove the fee
@@ -149,21 +135,6 @@ validator contract(
             }
             // Transform the sale by some token
             TransformSale { transforms } -> {
-              let Transaction {
-                inputs,
-                outputs,
-                reference_inputs,
-                extra_signatories,
-                ..
-              } = transaction
-              // data reference stuff
-              let ref_addr: Address = address.from_script(ref_hash)
-              let ref_input: Input =
-                find.input_by_addr(reference_inputs, ref_addr)
-              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
-              // the input being validated
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
               let this_value: Value = this_input.output.value
               let this_address: Address = this_input.output.address
               // this value is transformed into that value
@@ -198,21 +169,6 @@ validator contract(
             }
             // Owner can remove their UTxO by burning the pointer
             RemoveSale -> {
-              let Transaction {
-                inputs,
-                reference_inputs,
-                mint,
-                extra_signatories,
-                ..
-              } = transaction
-              // data reference stuff
-              let ref_addr: Address = address.from_script(ref_hash)
-              let ref_input: Input =
-                find.input_by_addr(reference_inputs, ref_addr)
-              expect ref_datum: ReferenceDatum = datum.input_datum(ref_input)
-              // the input being validated
-              let this_input: Input =
-                find.input_by_ref(inputs, output_reference)
               let this_value: Value = this_input.output.value
               let this_address: Address = this_input.output.address
               // check if the pointer token needs to be burned or not
@@ -255,11 +211,8 @@ validator contract(
           }
         } else {
           // incorrect data structures should be spendable
-          let Transaction { reference_inputs, extra_signatories, .. } =
-            transaction
-          let ref_data_addr: Address = address.from_script(ref_hash)
           backup.logic(
-            ref_data_addr,
+            ref_addr,
             reference_inputs,
             extra_signatories,
             starter_pid,
@@ -267,18 +220,14 @@ validator contract(
           )?
         }
       // missing data structures should be spendable
-      None -> {
-        let Transaction { reference_inputs, extra_signatories, .. } =
-          transaction
-        let ref_data_addr: Address = address.from_script(ref_hash)
+      None ->
         backup.logic(
-          ref_data_addr,
+          ref_addr,
           reference_inputs,
           extra_signatories,
           starter_pid,
           starter_tkn,
         )?
-      }
     }
   }
 
