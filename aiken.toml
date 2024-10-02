@@ -1,6 +1,6 @@
 name = "projectnewm/newm-market"
 version = "1.0.0"
-compiler = "v1.1.3"
+compiler = "v1.1.4"
 plutus = "v3"
 license = "GPL-3.0-or-later"
 description = "Aiken contracts for project NEWM"
