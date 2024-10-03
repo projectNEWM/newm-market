@@ -40,10 +40,6 @@ Steps to set up marketplace on preprod:
 
 Following these steps will properly set up the marketplace contracts. Test by running `02_updateReferenceData.sh` inside the reference folder. The transaction should be able to validate and submit on-chain. 
 
-# Batcher Configuration
-
-This section is dedicated to setting up a batcher, as it requires locking up a complete set of band tokens and creating a few vault UTxOs.
-
 ## NEWM Monster Band Lock Up
 
 Locking a band requires having one of each token prefix from the two policy ids below.
