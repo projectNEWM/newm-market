@@ -18,9 +18,12 @@ newm_address=$(cat ../wallets/newm-wallet/payment.addr)
 newm_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
 
 # multisig
-keeper1_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
-keeper2_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
-keeper3_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
+# keeper1_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
+# keeper2_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
+# keeper3_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
+keeper1_pkh=$(cat ../wallets/keeper1-wallet/payment.hash)
+keeper2_pkh=$(cat ../wallets/keeper2-wallet/payment.hash)
+keeper3_pkh=$(cat ../wallets/keeper3-wallet/payment.hash)
 
 # asset to trade
 policy_id=$(jq -r '.starterPid' ../../config.json)
@@ -109,7 +112,7 @@ IFS=':' read -ra VALUE <<< "${FEE}"
 IFS=' ' read -ra FEE <<< "${VALUE[1]}"
 echo -e "\033[1;32m Fee:\033[0m" $FEE
 #
-# exit
+exit
 #
 echo -e "\033[0;36m Signing \033[0m"
 ${cli} conway transaction sign \
