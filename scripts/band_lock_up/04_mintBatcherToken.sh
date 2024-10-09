@@ -111,6 +111,11 @@ script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/band-reference
 batcher_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/batcher-reference-utxo.signed )
 data_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed )
 
+cp ../data/band_lock/batcher_token.cbor.hex ../data/band_lock/metadata.hex
+    sed -i "s/policy_here000000000000000000000000000000000000000000000/$batcher_policy/g" ../data/band_lock/metadata.hex
+    sed -i "s/affab1e000000000000000000000000000000000000000000000000000000000/$batcher_token_name/g" ../data/band_lock/metadata.hex
+    xxd -r -p ../data/band_lock/metadata.hex > ../data/band_lock/batcher_token.cbor
+
 echo -e "\033[0;36m Building Tx \033[0m"
 FEE=$(${cli} conway transaction build \
     --out-file ../tmp/tx.draft \
@@ -133,6 +138,7 @@ FEE=$(${cli} conway transaction build \
     --mint-plutus-script-v3 \
     --policy-id="${batcher_policy_id}" \
     --mint-reference-tx-in-redeemer-file ../data/band_lock/mint-batcher-redeemer.json \
+    --metadata-cbor-file batcher_token.cbor \
     ${network})
 
 IFS=':' read -ra VALUE <<< "${FEE}"
