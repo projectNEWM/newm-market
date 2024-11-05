@@ -5,6 +5,9 @@ export CARDANO_NODE_SOCKET_PATH=$(cat ../data/path_to_socket.sh)
 cli=$(cat ../data/path_to_cli.sh)
 network=$(cat ../data/network.sh)
 
+# get current params
+${cli} conway query protocol-parameters ${network} --out-file ../tmp/protocol.json
+
 # staked smart contract address
 script_path="../../contracts/reference_contract.plutus"
 script_address=$(${cli} conway address build --payment-script-file ${script_path} ${network})
@@ -18,9 +21,6 @@ newm_address=$(cat ../wallets/newm-wallet/payment.addr)
 newm_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/newm-wallet/payment.vkey)
 
 # multisig
-# keeper1_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper1-wallet/payment.vkey)
-# keeper2_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper2-wallet/payment.vkey)
-# keeper3_pkh=$(${cli} conway address key-hash --payment-verification-key-file ../wallets/keeper3-wallet/payment.vkey)
 keeper1_pkh=$(cat ../wallets/keeper1-wallet/payment.hash)
 keeper2_pkh=$(cat ../wallets/keeper2-wallet/payment.hash)
 keeper3_pkh=$(cat ../wallets/keeper3-wallet/payment.hash)
@@ -90,7 +90,7 @@ script_ref_utxo=$(${cli} conway transaction txid --tx-file ../tmp/reference-refe
 
 echo -e "\033[0;36m Building Tx \033[0m"
 FEE=$(${cli} conway transaction build \
-    --out-file ../tmp/tx.draft \
+    --calculate-plutus-script-cost ../tmp/tx.cost \
     --change-address ${newm_address} \
     --tx-in-collateral ${collat_tx_in} \
     --tx-in ${newm_tx_in} \
@@ -108,29 +108,27 @@ FEE=$(${cli} conway transaction build \
     --required-signer-hash ${keeper3_pkh} \
     ${network})
 
-IFS=':' read -ra VALUE <<< "${FEE}"
-IFS=' ' read -ra FEE <<< "${VALUE[1]}"
-echo -e "\033[1;32m Fee:\033[0m" $FEE
-#
-exit
-#
-echo -e "\033[0;36m Signing \033[0m"
-${cli} conway transaction sign \
-    --signing-key-file ../wallets/newm-wallet/payment.skey \
-    --signing-key-file ../wallets/collat-wallet/payment.skey \
-    --signing-key-file ../wallets/keeper1-wallet/payment.skey \
-    --signing-key-file ../wallets/keeper2-wallet/payment.skey \
-    --signing-key-file ../wallets/keeper3-wallet/payment.skey \
-    --tx-body-file ../tmp/tx.draft \
-    --out-file ../tmp/referenceable-tx.signed \
-    ${network}
-#
-# exit
-#
-echo -e "\033[0;36m Submitting \033[0m"
-${cli} conway transaction submit \
-    ${network} \
-    --tx-file ../tmp/referenceable-tx.signed
+fee=$(echo $FEE | grep -o '[0-9]\+')
+echo -e "\033[1;32m Fee:\033[0m" $fee
 
-tx=$(${cli} conway transaction txid --tx-file ../tmp/referenceable-tx.signed)
-echo "Tx Hash:" $tx
+mem=$(cat ../tmp/tx.cost | jq -r '.[0].executionUnits.memory')
+cpu=$(cat ../tmp/tx.cost | jq -r '.[0].executionUnits.steps')
+
+execution_units="(${cpu}, ${mem})"
+echo -e "\033[1;32m Units:\033[0m" $execution_units
+
+
+${cli} conway transaction build-raw \
+    --out-file ../tmp/tx.draft \
+    --protocol-params-file ../tmp/protocol.json \
+    --tx-in-collateral="${collat_tx_in}" \
+    --tx-in ${newm_tx_in} \
+    --tx-in ${script_tx_in} \
+    --spending-tx-in-reference="${script_ref_utxo}#1" \
+    --spending-plutus-script-v3 \
+    --spending-reference-tx-in-inline-datum-present \
+    --spending-reference-tx-in-execution-units="${execution_units}" \
+    --spending-reference-tx-in-redeemer-file ../data/reference/update-redeemer.json \
+    --tx-out="${script_address_out}" \
+    --tx-out-inline-datum-file ../data/reference/reference-datum.json \
+    --fee ${fee}
